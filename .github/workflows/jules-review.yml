@@ -1,0 +1,27 @@
+name: Invoke Jules
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: 'Задача для Jules'
+        required: true
+        type: string
+
+jobs:
+  jules-task:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Invoke Jules
+        uses: google-labs-code/jules-invoke@v1.0.0
+        with:
+          prompt: ${{ github.event.inputs.prompt }}
+          jules_api_key: ${{ secrets.JULES_API_KEY }}

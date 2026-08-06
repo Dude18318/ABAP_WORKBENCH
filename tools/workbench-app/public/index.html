@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIBUR AI ABAP Workbench</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <button class="icon-btn sidebar-launch-btn" id="main-sidebar-toggle-btn" title="Свернуть / Развернуть дерево проекта (Ctrl+B)">
+        <span id="sidebar-toggle-icon">◀</span>
+        <strong>Дерево</strong>
+      </button>
+      <div class="brand-icon">S</div>
+      <div>
+        <div class="brand-kicker">Internal Navigation Hub</div>
+        <div class="brand-title">SIBUR AI ABAP Workbench</div>
+      </div>
+      <span class="brand-badge">Offline</span>
+    </div>
+
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="tab-overview">Обзор</button>
+      <button class="tab-btn" data-tab="tab-workspace">Рабочая область</button>
+      <button class="tab-btn" data-tab="tab-specs">Спецификации</button>
+      <button class="tab-btn" data-tab="tab-knowledge">База знаний</button>
+      <button class="tab-btn" data-tab="tab-tools">Инструменты</button>
+    </nav>
+
+    <div class="header-actions">
+      <button class="btn btn-secondary" id="open-workflow-guide-btn">Как работать</button>
+      <button class="btn btn-secondary" id="start-tour-btn">Тур по UI</button>
+
+      <div class="control-pill">
+        <span class="control-label">Шрифт</span>
+        <button class="icon-btn" id="font-decrease-btn" title="Уменьшить шрифт">A-</button>
+        <span id="font-size-display" class="font-size-display">14px</span>
+        <button class="icon-btn" id="font-increase-btn" title="Увеличить шрифт">A+</button>
+      </div>
+
+      <button class="icon-btn theme-toggle-btn" id="theme-toggle-btn" title="Переключить тему (Светлая / Тёмная)">🌙</button>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span>Навигатор Репозитория</span>
+        <button class="icon-btn" id="toggle-sidebar-btn" title="Скрыть дерево проекта">◀</button>
+      </div>
+
+      <div class="tree-view" id="project-tree">
+        <div class="loading-state">Загрузка файлов...</div>
+      </div>
+    </aside>
+
+    <main class="content-area">
+      <div class="tab-pane active" id="tab-overview">
+        <section class="hero-panel glass-card">
+          <div class="hero-copy">
+            <span class="eyebrow">ABAP Team Workspace</span>
+            <h1>Навигационный хаб для правил, ТЗ, референсов и ежедневной разработки.</h1>
+            <p>Первый экран должен быстро направлять разработчика: куда идти за правилами, где лежит спецификация, как открыть шаблоны и когда запускать утилиты.</p>
+            <div class="hero-actions">
+              <button class="btn" data-jump-tab="tab-knowledge">Открыть базу знаний</button>
+              <button class="btn btn-secondary" data-jump-tab="tab-workspace">Перейти к файлам</button>
+            </div>
+          </div>
+          <div class="hero-metrics">
+            <div class="metric-card accent-cyan">
+              <span class="metric-label">Основной регламент</span>
+              <strong>.agents/AGENTS.md</strong>
+              <button class="metric-link" data-open-file=".agents/AGENTS.md">Открыть</button>
+            </div>
+            <div class="metric-card accent-amber">
+              <span class="metric-label">Маршруты работы</span>
+              <strong>Playbooks</strong>
+              <button class="metric-link" data-open-file="docs/agent-context/playbooks/README.md">Смотреть</button>
+            </div>
+            <div class="metric-card accent-emerald">
+              <span class="metric-label">Шаблоны разработки</span>
+              <strong>Boilerplate</strong>
+              <button class="metric-link" data-open-file="src/boilerplate/z_bp_report.prog.abap">Открыть</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="dashboard-grid">
+          <article class="glass-card section-card section-card-primary">
+            <div class="section-card-header">
+              <span class="section-icon">01</span>
+              <div>
+                <h2>Куда идти вначале</h2>
+                <p>Быстрые маршруты по самым важным разделам воркбенча.</p>
+              </div>
+            </div>
+            <div class="quick-links-grid">
+              <button class="quick-link-card" data-open-file=".agents/AGENTS.md">
+                <span class="quick-link-kicker">Регламент</span>
+                <strong>Главные правила разработки</strong>
+                <span>Архитектура, SQL, naming, тесты, HCM.</span>
+              </button>
+              <button class="quick-link-card" data-open-file="docs/agent-context/playbooks/README.md">
+                <span class="quick-link-kicker">Playbooks</span>
+                <strong>Выбрать сценарий работы</strong>
+                <span>Legacy change, greenfield, spec-driven, unknown Z-objects.</span>
+              </button>
+              <button class="quick-link-card" data-open-file="docs/agent-context/testing.md">
+                <span class="quick-link-kicker">Тесты</span>
+                <strong>ABAP Unit и моки DAO</strong>
+                <span>Быстрый вход в подход к тестированию.</span>
+              </button>
+              <button class="quick-link-card" data-open-file="docs/agent-context/hcm-development.md">
+                <span class="quick-link-kicker">HCM</span>
+                <strong>Специализированные правила</strong>
+                <span>Отдельный маршрут для кадрового контура.</span>
+              </button>
+            </div>
+          </article>
+
+          <article class="glass-card section-card">
+            <div class="section-card-header">
+              <span class="section-icon">02</span>
+              <div>
+                <h2>Рабочие сценарии</h2>
+                <p>Навигация не по файлам, а по типовым задачам команды.</p>
+              </div>
+            </div>
+            <div class="workflow-list">
+              <button class="workflow-item" data-open-file="docs/agent-context/playbooks/legacy-change.md">
+                <strong>Точечная доработка legacy</strong>
+                <span>Минимальные изменения, локальный рефакторинг, снижение риска.</span>
+              </button>
+              <button class="workflow-item" data-open-file="docs/agent-context/playbooks/greenfield-report.md">
+                <strong>Новый отчет с нуля</strong>
+                <span>Boilerplate, MVC/DAO, selection screen, тесты.</span>
+              </button>
+              <button class="workflow-item" data-open-file="docs/agent-context/playbooks/spec-driven.md">
+                <strong>Разработка по ТЗ</strong>
+                <span>Сначала анализ спецификации, потом реализация и сверка.</span>
+              </button>
+              <button class="workflow-item" data-open-file="docs/agent-context/playbooks/unknown-z-objects.md">
+                <strong>Неизвестные Z-объекты</strong>
+                <span>Как двигаться, если сигнатур в контексте пока нет.</span>
+              </button>
+            </div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid dashboard-grid-secondary">
+          <article class="glass-card info-panel">
+            <div class="panel-heading">
+              <h3>Структура воркбенча</h3>
+              <span class="pill">Навигация</span>
+            </div>
+            <ul class="clean-list">
+              <li><strong>Рабочая область</strong> для открытия и правки файлов.</li>
+              <li><strong>Спецификации</strong> для ТЗ, планов и Word-документов.</li>
+              <li><strong>База знаний</strong> для регламентов, таблиц и утилит.</li>
+              <li><strong>Инструменты</strong> для линтера, генератора и обфускатора.</li>
+            </ul>
+          </article>
+          <article class="glass-card info-panel accent-panel">
+            <div class="panel-heading">
+              <h3>Быстрые действия</h3>
+              <span class="pill">Today</span>
+            </div>
+            <div class="action-stack">
+              <button class="action-row" data-open-file="README.md">
+                <span>Открыть README воркбенча</span>
+                <span>↗</span>
+              </button>
+              <button class="action-row" data-open-file="plan.md">
+                <span>Посмотреть текущий план</span>
+                <span>↗</span>
+              </button>
+              <button class="action-row" data-jump-tab="tab-tools">
+                <span>Запустить утилиты</span>
+                <span>↗</span>
+              </button>
+            </div>
+          </article>
+        </section>
+      </div>
+
+      <div class="tab-pane" id="tab-workspace">
+        <div class="glass-card workspace-card">
+          <div class="editor-header">
+            <div class="editor-heading-group">
+              <span class="editor-heading">Рабочая область</span>
+              <span class="file-path-badge" id="current-file-path">выберите файл слева</span>
+              <div id="mode-switch-group" class="mode-switch-group">
+                <button class="icon-btn active" id="mode-edit-btn" title="Текстовое редактирование">Редактор</button>
+                <button class="icon-btn" id="mode-highlight-btn" title="Просмотр с подсветкой синтаксиса ABAP">Подсветка ABAP</button>
+              </div>
+            </div>
+            <div class="editor-actions">
+              <button class="btn btn-secondary" id="lint-abap-btn">Проверить ABAP</button>
+              <button class="btn" id="save-file-btn">Сохранить</button>
+            </div>
+          </div>
+          <textarea class="code-textarea" id="file-editor" placeholder="Выберите файл из дерева слева для просмотра и редактирования..."></textarea>
+          <div id="file-highlight-view" class="abap-code-view" style="display: none;"></div>
+
+          <div id="lint-results-panel" class="lint-results-panel" style="display: none;">
+            <div class="lint-results-header">
+              <div class="lint-results-title-group">
+                <span class="lint-results-title">Результаты проверки SIBUR Linter</span>
+                <button class="btn btn-secondary btn-small" id="export-agent-prompt-btn">Сформировать замечания для агента</button>
+              </div>
+              <button class="icon-btn" id="close-lint-panel-btn" title="Закрыть панель">✕</button>
+            </div>
+            <div id="lint-issues-list" class="lint-issues-list"></div>
+          </div>
+        </div>
+      </div>
+
+            <div class="tab-pane" id="tab-specs">
+        <div class="spec-workspace-shell">
+          <div class="glass-card spec-sidebar-card">
+            <div class="panel-heading compact-heading">
+              <div>
+                <div class="card-title card-title-small">Spec Workspace</div>
+                <p class="card-subtitle">ТЗ, план, анализ и пробелы по сигнатурам в одном рабочем контуре.</p>
+              </div>
+              <span class="pill">ТЗ</span>
+            </div>
+            <div id="spec-list" class="spec-list-shell">
+              <div class="loading-state">Загрузка документов...</div>
+            </div>
+          </div>
+          <div class="glass-card spec-viewer-card">
+            <div class="editor-header spec-viewer-header">
+              <div>
+                <div class="card-title card-title-small" id="spec-doc-title">Выберите документ слева</div>
+                <span class="file-path-badge" id="spec-doc-path">Spec workspace</span>
+              </div>
+              <span class="pill" id="spec-doc-kind">Spec</span>
+            </div>
+            <div class="spec-toolbar" id="spec-related-actions">
+              <button class="btn btn-secondary" id="load-plan-btn">Открыть plan.md</button>
+            </div>
+            <div class="spec-meta-grid">
+              <div class="spec-meta-card">
+                <div class="result-column-title">Назначение</div>
+                <p class="card-subtitle" id="spec-doc-description">Выберите ТЗ или связанный артефакт, чтобы увидеть содержание и переходы.</p>
+              </div>
+              <div class="spec-meta-card">
+                <div class="result-column-title">Что делать дальше</div>
+                <ul class="clean-list" id="spec-doc-guidance">
+                  <li>Откройте исходное ТЗ.</li>
+                  <li>Проверьте plan.md и spec_analysis.</li>
+                  <li>Сверьте missing_signatures перед кодингом.</li>
+                </ul>
+              </div>
+            </div>
+            <textarea class="code-textarea spec-textarea" id="spec-editor" placeholder="Содержимое ТЗ, плана или анализа спецификации появится здесь..." readonly></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="tab-knowledge">
+        <div class="knowledge-shell">
+          <div class="glass-card knowledge-sidebar-card">
+            <div class="panel-heading compact-heading">
+              <div>
+                <div class="card-title card-title-small">Карта знаний</div>
+                <p class="card-subtitle">Регламенты, классы, таблицы, HCM и шаблоны.</p>
+              </div>
+            </div>
+            <input type="text" id="ref-search-input" class="search-input" placeholder="Найти справочник, таблицу, класс, playbook...">
+            <div id="all-references-list" class="reference-list-shell">
+              <div class="loading-state">Загрузка справочников...</div>
+            </div>
+          </div>
+          <div class="glass-card knowledge-viewer-card">
+            <div class="editor-header">
+              <div>
+                <div class="card-title card-title-small" id="knowledge-item-title">Выберите референс слева</div>
+                <span class="file-path-badge" id="knowledge-path-badge">docs/agent-context/</span>
+              </div>
+            </div>
+            <div class="markdown-body" id="knowledge-markdown-render"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="tab-tools">
+        <section class="dashboard-grid tools-grid">
+          <article class="glass-card section-card">
+            <div class="section-card-header">
+              <span class="section-icon">A</span>
+              <div>
+                <h2>Генератор каркаса</h2>
+                <p>Утилита для быстрого старта нового отчета по внутреннему шаблону.</p>
+              </div>
+            </div>
+            <div class="tool-form-grid">
+              <div>
+                <label class="field-label">Boilerplate</label>
+                <div class="boilerplate-picker" id="boilerplate-picker">
+                  <button type="button" class="boilerplate-picker-trigger" id="boilerplate-trigger" aria-expanded="false">
+                    <span class="boilerplate-picker-label-group">
+                      <span class="boilerplate-picker-kicker" id="boilerplate-trigger-kicker">Boilerplate</span>
+                      <span id="boilerplate-trigger-label">Загрузка шаблонов...</span>
+                    </span>
+                    <span class="boilerplate-picker-icon" id="boilerplate-trigger-icon">▾</span>
+                  </button>
+                  <div class="boilerplate-picker-menu" id="boilerplate-menu"></div>
+                  <select id="boilerplate-select" class="text-input boilerplate-native-select" tabindex="-1" aria-hidden="true"></select>
+                </div>
+                <p class="helper-text" id="boilerplate-description">Загрузка доступных шаблонов...</p>
+              </div>
+              <div>
+                <label class="field-label">Имя отчёта</label>
+                <input type="text" id="gen-report-name" value="Z_MY_NEW_REPORT" class="text-input">
+              </div>
+              <div>
+                <label class="field-label">Целевая папка</label>
+                <input type="text" id="gen-target-dir" value="src/z_my_new_report" class="text-input">
+              </div>
+            </div>
+            <button class="btn" id="generate-boilerplate-btn">Сгенерировать каркас проекта</button>
+            <p class="helper-text">Каркас создается прямо из выбранного шаблона. Уже существующие файлы не перезаписываются, чтобы инструмент оставался безопасным для повседневного использования.</p>
+            <div id="boilerplate-result-panel" class="boilerplate-result-panel" style="display: none;">
+              <div class="result-panel-header">
+                <div>
+                  <div class="card-title card-title-small" id="boilerplate-result-title">Результат генерации</div>
+                  <p class="card-subtitle" id="boilerplate-result-meta">Файлы будут показаны здесь после создания каркаса.</p>
+                </div>
+              </div>
+              <div class="result-columns">
+                <div class="result-column">
+                  <div class="result-column-title">Создано</div>
+                  <div id="boilerplate-created-list" class="result-file-list"></div>
+                </div>
+                <div class="result-column">
+                  <div class="result-column-title">Пропущено</div>
+                  <div id="boilerplate-skipped-list" class="result-file-list"></div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="glass-card section-card">
+            <div class="section-card-header">
+              <span class="section-icon">B</span>
+              <div>
+                <h2>ABAP-обфускатор</h2>
+                <p>Подготовка кода для передачи вовне или быстрого обсуждения без лишних деталей.</p>
+              </div>
+            </div>
+            <div class="option-row">
+              <label class="checkbox-row"><input type="checkbox" id="obf-remove-comments" checked> Удалять комментарии (* и ")</label>
+              <label class="checkbox-row"><input type="checkbox" id="obf-replace-vars" checked> Анонимизировать lv_*, lt_*, ls_*, &lt;fs_*&gt;</label>
+            </div>
+            <div class="obfuscator-grid">
+              <div>
+                <div class="field-label">Исходный ABAP-код</div>
+                <textarea class="code-textarea" id="obf-input" placeholder="Вставьте исходный код ABAP для обфускации..."></textarea>
+              </div>
+              <div>
+                <div class="field-label">Результат</div>
+                <textarea class="code-textarea" id="obf-output" readonly placeholder="Здесь выведется обработанный код..."></textarea>
+              </div>
+            </div>
+            <div class="tool-footer">
+              <button class="btn" id="run-obfuscator-btn">Запустить обфускацию</button>
+              <span id="obf-stats-badge" class="helper-text"></span>
+            </div>
+          </article>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="workflow-guide-backdrop" class="workflow-guide-backdrop" style="display: none;"></div>
+  <section id="workflow-guide-modal" class="workflow-guide-modal" role="dialog" aria-modal="true" aria-labelledby="workflow-guide-title" style="display: none;">
+    <div class="workflow-guide-header">
+      <div><span class="eyebrow">Рабочий процесс</span><h2 id="workflow-guide-title">Как работать с SIBUR AI ABAP Workbench</h2></div>
+      <button class="icon-btn" id="close-workflow-guide-btn" title="Закрыть инструкцию">✕</button>
+    </div>
+    <div class="workflow-guide-content">
+      <p class="workflow-guide-lead">Основной инструмент — AI-агент с контекстом репозитория. Этот интерфейс помогает просматривать и править файлы, находить знания, создавать каркасы и готовить код к обсуждению.</p>
+      <ol class="workflow-steps">
+        <li><strong>Положите ТЗ</strong> в папку <code>Spec and result/</code>.</li>
+        <li><strong>Добавьте контекст из SAP</strong>: сигнатуры неизвестных таблиц, классов, ФМ и типов сохраните в <code>docs/agent-context/references/</code>.</li>
+        <li><strong>Дайте агенту промпт анализа</strong>. Он применит <code>.agents/AGENTS.md</code>, playbooks и локальные справочники, а спорные места зафиксирует в <code>spec_analysis.md</code>. Для каждого отсутствующего объекта агент также обновит <code>missing_signatures.md</code> — это очередь сигнатур, которые нужно выгрузить из SAP.</li>
+        <li><strong>Согласуйте блокеры</strong>, затем попросите агента реализовать задачу. Для новой разработки он выберет boilerplate, для legacy — сделает минимальную правку.</li>
+        <li><strong>Проверьте результат в SAP</strong>: активация, ABAP Unit, ATC/SLIN и транспорт остаются в вашем обычном SAP-процессе.</li>
+      </ol>
+      <div class="workflow-prompts">
+        <article class="workflow-prompt-card"><div class="workflow-prompt-heading"><h3>1. Анализ ТЗ</h3><button class="btn btn-secondary btn-small" data-copy-prompt="analysis">Скопировать</button></div><pre id="workflow-analysis-prompt">Проанализируй новое ТЗ из папки «Spec and result». Примени правила .agents/AGENTS.md и playbook spec-driven. Сначала составь или обнови docs/agent-context/required_objects/spec_analysis.md: выдели требования, риски, неизвестные Z-объекты и блокеры. Для каждого отсутствующего объекта добавь или обнови запись в docs/agent-context/required_objects/missing_signatures.md: тип объекта, нужную сигнатуру, что запросить в SAP и является ли это блокером. Используй локальные references; ничего не предполагай для объектов, влияющих на сохранение, права и проводки.</pre></article>
+        <article class="workflow-prompt-card"><div class="workflow-prompt-heading"><h3>2. Реализация</h3><button class="btn btn-secondary btn-small" data-copy-prompt="implementation">Скопировать</button></div><pre id="workflow-implementation-prompt">Реализуй согласованную задачу по ТЗ из «Spec and result», используя .agents/AGENTS.md, spec_analysis.md и локальные references. Выбери legacy-change либо greenfield-report по характеру задачи. Сохрани минимальный объём изменений; SQL и внешние зависимости вынеси в DAO; добавь ABAP Unit на изменённую детерминированную логику. В конце сверь код с ТЗ и перечисли допущения и непроверяемые места.</pre></article>
+      </div>
+      <p class="workflow-guide-note">Интерфейс — дополнительная утилита, а не обязательная первая точка входа: его используйте тогда, когда удобнее открыть файл, найти справочник, сгенерировать каркас, проверить код или обезличить фрагмент.</p>
+    </div>
+  </section>
+  <div id="tour-backdrop" class="tour-backdrop" style="display: none;"></div>
+  <div id="tour-tooltip" class="tour-tooltip" style="display: none;">
+    <div class="tour-tooltip-header">
+      <span class="tour-step-badge" id="tour-step-badge">Шаг 1 из 6</span>
+      <button class="icon-btn" id="tour-close-btn">✕</button>
+    </div>
+    <div class="tour-title" id="tour-title">Заголовок шага</div>
+    <div class="tour-desc" id="tour-desc">Описание шага...</div>
+    <div class="tour-footer">
+      <button class="btn btn-secondary btn-small" id="tour-prev-btn">Назад</button>
+      <button class="btn btn-small" id="tour-next-btn">Далее</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
+
+
+
+
