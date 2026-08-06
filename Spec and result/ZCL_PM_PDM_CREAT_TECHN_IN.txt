@@ -1,0 +1,2220 @@
+class ZCL_PM_PDM_CREAT_TECHN_IN definition
+  public
+  final
+  create public .
+
+public section.
+
+  interfaces ZPMII_Z_PM_PDM_CREAT_TECHN_IN .
+  interfaces ZIF_PM_PDM_TECHNOLOGY .
+
+  aliases MC_S_REQ_MAT
+    for ZIF_PM_PDM_TECHNOLOGY~MC_S_REQ_MAT .
+  aliases MC_TVARV_CONSTS
+    for ZIF_PM_PDM_TECHNOLOGY~MC_TVARV_CONSTS .
+  aliases Z_PM_PDM_CREAT_TECHN_IN
+    for ZPMII_Z_PM_PDM_CREAT_TECHN_IN~Z_PM_PDM_CREAT_TECHN_IN .
+  aliases TT_IZD
+    for ZIF_PM_PDM_TECHNOLOGY~TT_IZD .
+  aliases TT_IZD_MATNR
+    for ZIF_PM_PDM_TECHNOLOGY~TT_IZD_MATNR .
+  aliases TT_OPER
+    for ZIF_PM_PDM_TECHNOLOGY~TT_OPER .
+  aliases TT_OPER_MATNR
+    for ZIF_PM_PDM_TECHNOLOGY~TT_OPER_MATNR .
+  aliases TT_PDM_TECHN
+    for ZIF_PM_PDM_TECHNOLOGY~TT_PDM_TECHN .
+  aliases TT_TECH
+    for ZIF_PM_PDM_TECHNOLOGY~TT_TECH .
+  aliases TT_TECH_MATNR
+    for ZIF_PM_PDM_TECHNOLOGY~TT_TECH_MATNR .
+  aliases TY_IZD
+    for ZIF_PM_PDM_TECHNOLOGY~TY_IZD .
+  aliases TY_IZD_MATNR
+    for ZIF_PM_PDM_TECHNOLOGY~TY_IZD_MATNR .
+  aliases TY_OPER
+    for ZIF_PM_PDM_TECHNOLOGY~TY_OPER .
+  aliases TY_OPER_MATNR
+    for ZIF_PM_PDM_TECHNOLOGY~TY_OPER_MATNR .
+  aliases TY_PDM_TECHN
+    for ZIF_PM_PDM_TECHNOLOGY~TY_PDM_TECHN .
+  aliases TY_R_PLNTY
+    for ZIF_PM_PDM_TECHNOLOGY~TY_R_PLNTY .
+  aliases TY_R_STLAN
+    for ZIF_PM_PDM_TECHNOLOGY~TY_R_STLAN .
+  aliases TY_SRT_MKAL
+    for ZIF_PM_PDM_TECHNOLOGY~TY_SRT_MKAL .
+  aliases TY_SRT_PLKO
+    for ZIF_PM_PDM_TECHNOLOGY~TY_SRT_PLKO .
+  aliases TY_SRT_PREV_OBJECTS
+    for ZIF_PM_PDM_TECHNOLOGY~TY_SRT_PREV_OBJECTS .
+  aliases TY_SRT_PROD_VERSIONS
+    for ZIF_PM_PDM_TECHNOLOGY~TY_SRT_PROD_VERSIONS .
+  aliases TY_SRT_STKO
+    for ZIF_PM_PDM_TECHNOLOGY~TY_SRT_STKO .
+  aliases TY_S_ADD_DATA4DEACT
+    for ZIF_PM_PDM_TECHNOLOGY~TY_S_ADD_DATA4DEACT .
+  aliases TY_S_MKAL
+    for ZIF_PM_PDM_TECHNOLOGY~TY_S_MKAL .
+  aliases TY_S_PLKO
+    for ZIF_PM_PDM_TECHNOLOGY~TY_S_PLKO .
+  aliases TY_S_PREV_OBJECTS
+    for ZIF_PM_PDM_TECHNOLOGY~TY_S_PREV_OBJECTS .
+  aliases TY_S_STKO
+    for ZIF_PM_PDM_TECHNOLOGY~TY_S_STKO .
+  aliases TY_TECH
+    for ZIF_PM_PDM_TECHNOLOGY~TY_TECH .
+  aliases TY_TECH_MATNR
+    for ZIF_PM_PDM_TECHNOLOGY~TY_TECH_MATNR .
+  aliases TY_TVARVC_KEYS
+    for ZIF_PM_PDM_TECHNOLOGY~TY_TVARVC_KEYS .
+  aliases TY_TVARVC_VALUES
+    for ZIF_PM_PDM_TECHNOLOGY~TY_TVARVC_VALUES .
+
+  types:
+    BEGIN OF ty_werks_profile,
+        werks      TYPE werks,
+        profidnetz TYPE tca41-profidnetz,
+      END OF ty_werks_profile .
+  types:
+    tt_werks_profile   TYPE SORTED TABLE OF ty_werks_profile
+                  WITH NON-UNIQUE KEY werks .
+  types:
+    tt_guid            TYPE STANDARD TABLE OF guid                    WITH EMPTY KEY .
+  types:
+    tt_r_guid          TYPE RANGE OF guid .
+  types:
+    tt_stpob           TYPE STANDARD TABLE OF stpob                    WITH EMPTY KEY .
+  types:
+    tt_textallocation  TYPE STANDARD TABLE OF bapi1012_txt_hdr_c WITH EMPTY KEY .
+  types:
+    tt_text            TYPE STANDARD TABLE OF bapi1012_txt_c     WITH EMPTY KEY .
+  types:
+    tt_eaem_text       TYPE STANDARD TABLE OF eam_s_text         WITH EMPTY KEY .
+  types:
+    tt_eaem_text_lines TYPE STANDARD TABLE OF eam_s_text_lines   WITH EMPTY KEY .
+  types:
+    tt_eaem_oper       TYPE STANDARD TABLE OF eam_s_tl_opr       WITH EMPTY KEY .
+  types:
+    tt_plnal           TYPE STANDARD TABLE OF plnal              WITH EMPTY KEY
+                                                          WITH NON-UNIQUE SORTED KEY k1 COMPONENTS table_line .
+  types:
+    tt_verid           TYPE STANDARD TABLE OF verid              WITH EMPTY KEY
+                                                          WITH NON-UNIQUE SORTED KEY k1 COMPONENTS table_line .
+  types:
+    BEGIN OF ty_arbpl_cache,
+        arbpl_input TYPE arbpl,   " исходный ARBPL из потока
+        arbpl_found TYPE arbpl,   " найденный ARBPL в системе (или пусто, если ошибка)
+      END OF ty_arbpl_cache .
+  types:
+    tt_arbpl_cache TYPE STANDARD TABLE OF  ty_arbpl_cache WITH EMPTY KEY
+                                                                    WITH NON-UNIQUE SORTED KEY k1 COMPONENTS arbpl_input .
+private section.
+
+  types:
+    BEGIN OF ty_werks_cache,
+      werks TYPE werks,
+      cache TYPE tt_arbpl_cache,
+    END OF ty_werks_cache .
+
+  data MV_GUID_FLOW type GUID .
+  data MT_PDM_TECHN type TT_PDM_TECHN .
+  data:
+    mt_izd_cache     TYPE SORTED TABLE OF ty_izd WITH UNIQUE KEY guid_dse .
+  data MT_UPDATE_BUFFER type Z_T_PM_PDM_TECHN .
+  data:
+    mt_werks_cache TYPE SORTED TABLE OF ty_werks_cache WITH UNIQUE KEY werks .
+  constants MC_LOG_OBJECT type BALOBJ_D value 'ZPM_PDM' ##NO_TEXT.
+  constants MC_LOG_SUB_IN_TECHN type BALSUBOBJ value 'IN_TECHN' ##NO_TEXT.
+  data MS_TVARV type ZIF_PM_PDM_TECHNOLOGY=>TY_TVARVC_VALUES .
+  data MO_LOGGER type ref to ZCL_LOGGER .
+  data MO_DAO type ref to LCL_DAO .
+  data MV_DUMMY type CHAR255 .
+
+  methods _GET_ADD_DATA4DEACT
+    importing
+      !IT_PREV_OBJECTS type TY_SRT_PREV_OBJECTS
+      value(IV_GET_ALL) type XFELD default ABAP_FALSE
+    returning
+      value(RS_ADD_DATA4DEACT) type TY_S_ADD_DATA4DEACT .
+  methods GET_PROD_VERSIONS
+    importing
+      !IT_PREV_OBJ type TY_SRT_PREV_OBJECTS
+    returning
+      value(RT_PROD_VERSIONS) type TY_SRT_PROD_VERSIONS .
+  methods CHECK_DEACTIVATION
+    importing
+      !IT_PROD_VERSIONS type TY_SRT_PROD_VERSIONS
+      !IS_DEACT_OBJ type TY_S_ADD_DATA4DEACT
+    changing
+      !CV_TEXT type STRING .
+  methods RUN_DEACTIVATION
+    importing
+      !IT_PROD_VERSIONS type TY_SRT_PROD_VERSIONS
+      !IT_PREV_OBJ type TY_SRT_PREV_OBJECTS
+    returning
+      value(RS_DEACT_OBJ) type TY_S_ADD_DATA4DEACT .
+  methods _PREP_PROD_VERSIONS_KEYS
+    importing
+      !IS_PREV type TY_S_PREV_OBJECTS
+    changing
+      !CT_PROD_VERSIONS type TY_SRT_PROD_VERSIONS .
+  methods _SET_ERROR_DEACTIVATION
+    importing
+      !IV_STLAL type STRING
+      !IV_PLNNR_PLNAL type STRING
+      !IV_VERID type STRING
+    changing
+      !CV_TEXT type STRING .
+  methods _SET_OK_DEACTIVATION
+    importing
+      !IV_STLAL type STRING
+      !IV_PLNNR_PLNAL type STRING
+      !IV_VERID type STRING
+    changing
+      !CV_TEXT type STRING .
+  methods GET_IZD_BY_GUID
+    importing
+      !IV_GUID type GUID
+    returning
+      value(RS_IZD) type TY_IZD .
+  methods BUILD_ARBPL_CACHES .
+  methods READ_TVARV
+    returning
+      value(RS_TVARV) type ZIF_PM_PDM_TECHNOLOGY=>TY_TVARVC_VALUES .
+  methods FILL_TABLE_FROM_INPUT
+    importing
+      !IS_INPUT type ZPMZ_PM_PDM_CREAT_TECHN .
+  methods PROCESS_MATERIALS .
+  methods PROCESS_EQUIPMENTS .
+  methods UPDATE_NOTIFICATION
+    raising
+      ZCX_PM_PDM_TECHN_IN .
+  methods BUILD_NOTIFICATION_TEXT
+    importing
+      !IT_PDM_TECHN type TT_PDM_TECHN
+    returning
+      value(RV_TEXT) type STRING .
+  methods CREATE_MAT_TASKLIST
+    importing
+      !IS_PDM_TECHN type ZTPM_PDM_TECHN
+      !IT_ARBPL_CACHE type TT_ARBPL_CACHE
+    changing
+      !CS_PDM_TECHN type ZTPM_PDM_TECHN
+      !CS_IZD type TY_IZD .
+  methods VALIDATE_INPUT
+    importing
+      !IS_INPUT_PROXY type ZPMZ_PM_PDM_CREAT_TECHN
+    returning
+      value(RV_OK) type XFELD .
+  methods GET_FREE_GROUP_COUNTER
+    importing
+      !IV_PLNTY type PLNTY
+      !IV_PLNNR type PLNNR
+    returning
+      value(RV_PLNAL) type PLNAL .
+  methods CREATE_MAT_BOM
+    importing
+      !IS_PDM_TECHN type ZTPM_PDM_TECHN
+      !IS_IZD type TY_IZD
+    changing
+      !CS_PDM_TECHN type ZTPM_PDM_TECHN .
+  methods CREATE_MAT_VERID
+    importing
+      !IS_PDM_TECHN type ZTPM_PDM_TECHN
+      !IS_IZD type TY_IZD
+    changing
+      !CS_PDM_TECHN type ZTPM_PDM_TECHN .
+  methods HANDLE_PROD_VERS_UPDATE
+    importing
+      !IT_MKAL_I type MKAL_TAB
+    exporting
+      !EV_ERROR type FLAG
+      !EV_LOCKED type FLAG
+      !ET_BAPIRET type BAPIRET2_T .
+  methods GET_FREE_VERID
+    importing
+      !IV_MATNR type MATNR
+      !IV_WERKS type WERKS_D
+    returning
+      value(RV_VERID) type VERID .
+  methods PROCESS_EQ_BOM_SPECS .
+  methods CREATE_EQ_TASKLIST
+    importing
+      !IS_PDM_TECHN type ZTPM_PDM_TECHN
+      !IS_IZD type TY_IZD
+      !IT_ARBPL_CACHE type TT_ARBPL_CACHE
+    changing
+      !CS_PDM_TECHN type ZTPM_PDM_TECHN .
+  methods CHECK_UNFINISHED
+    raising
+      ZCX_PM_PDM_TECHN_IN .
+  methods RESOLVE_IWERK_FOR_EQ
+    importing
+      !IV_EQUNR type EQUNR
+    returning
+      value(RV_IWERK) type IWERK .
+  methods ADD_TO_UPDATE_BUFFER
+    importing
+      !IS_PDM_TECHN type ZTPM_PDM_TECHN .
+  methods FLUSH_UPDATE_BUFFER .
+  methods CONVERSION_CUNIT
+    importing
+      !IV_INPUT type ANY
+    exporting
+      !EV_RES type ANY .
+  methods NORMALIZE_GUIDS
+    changing
+      !CS_INPUT_PROXY type ZPMZ_PM_PDM_CREAT_TECHN1-Z_PM_PDM_CREAT_TECHN .
+  methods DEACTIVATION
+    importing
+      !IT_PDM_TECHN type TT_PDM_TECHN
+    changing
+      !CV_TEXT type STRING .
+ENDCLASS.
+
+
+
+CLASS ZCL_PM_PDM_CREAT_TECHN_IN IMPLEMENTATION.
+
+
+  METHOD add_to_update_buffer.
+    READ TABLE mt_update_buffer ASSIGNING FIELD-SYMBOL(<ls_buf>)
+      WITH TABLE KEY k1 COMPONENTS guid = is_pdm_techn-guid.
+    IF sy-subrc = 0.
+      <ls_buf> = is_pdm_techn.
+    ELSE.
+      APPEND is_pdm_techn TO mt_update_buffer.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD build_arbpl_caches.
+    DATA: lt_arbpl_list TYPE eamprt_tt_arbpl,
+          lv_werks      TYPE werks_d.
+
+    LOOP AT mt_pdm_techn ASSIGNING FIELD-SYMBOL(<ls_pdm>).
+      IF <ls_pdm>-req_mat_pl = '1' OR <ls_pdm>-req_mat_sp = '1' OR <ls_pdm>-req_mat_vr = '1'.
+        lv_werks = <ls_pdm>-werks.
+      ELSEIF <ls_pdm>-req_eq_pl = '1'.
+        IF <ls_pdm>-qmnum IS INITIAL.
+          DATA(lv_equnr) = <ls_pdm>-equnr .
+        ELSE.
+          lv_equnr = mo_dao->get_qmih_equnr( <ls_pdm>-qmnum ).
+        ENDIF.
+        lv_werks = resolve_iwerk_for_eq(  lv_equnr ).
+      ELSE.
+        CONTINUE.
+      ENDIF.
+      CHECK lv_werks IS NOT INITIAL.
+
+      READ TABLE mt_izd_cache INTO DATA(ls_izd) WITH KEY guid_dse = <ls_pdm>-guid.
+      CHECK sy-subrc = 0.
+      CLEAR lt_arbpl_list.
+      LOOP AT ls_izd-tab_tech INTO DATA(ls_tech).        "#EC CI_NESTED
+        LOOP AT ls_tech-tab_oper INTO DATA(ls_oper).     "#EC CI_NESTED
+          lt_arbpl_list = VALUE #(  BASE  lt_arbpl_list  ( sign = 'I' option = 'EQ' low = ls_oper-arbpl ) ).
+        ENDLOOP.
+      ENDLOOP.
+      CHECK lt_arbpl_list IS NOT INITIAL.
+
+      READ TABLE mt_werks_cache ASSIGNING FIELD-SYMBOL(<ls_werks_cache>) WITH TABLE KEY werks = lv_werks.
+      IF sy-subrc <> 0.
+        INSERT VALUE #( werks = lv_werks ) INTO TABLE mt_werks_cache ASSIGNING <ls_werks_cache>.
+      ENDIF.
+
+      LOOP AT mo_dao->find_work_centers(                 "#EC CI_NESTED
+                iv_werks      = lv_werks
+                it_arbpl_list = lt_arbpl_list ) INTO DATA(ls_new_cache).
+
+        READ TABLE <ls_werks_cache>-cache
+          WITH TABLE KEY k1
+            COMPONENTS arbpl_input = ls_new_cache-arbpl_input
+          ASSIGNING FIELD-SYMBOL(<ls_upd_cache>).
+        IF sy-subrc = 0.
+          IF <ls_upd_cache>-arbpl_found IS INITIAL. " Не понятно, может ли быть в одном случае заполнено, а в другом нет
+            <ls_upd_cache>-arbpl_found = ls_new_cache-arbpl_found.
+          ENDIF.
+        ELSE.
+          APPEND ls_new_cache TO <ls_werks_cache>-cache. " если нет такой записи, добавим
+        ENDIF.
+      ENDLOOP.
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD build_notification_text.
+    DATA lv_has_technology TYPE flag VALUE abap_false.
+    DATA lv_has_kd_only    TYPE flag VALUE abap_true.
+    DATA lv_line TYPE string.
+
+    LOOP AT it_pdm_techn ASSIGNING FIELD-SYMBOL(<ls_pdm>)
+          WHERE dsenr IS NOT INITIAL.                    "#EC CI_STDSEQ
+      IF <ls_pdm>-req_mat_pl = '2' OR <ls_pdm>-req_mat_sp = '2' OR
+         <ls_pdm>-req_mat_vr = '2' OR <ls_pdm>-req_eq_pl = '2' OR
+         <ls_pdm>-req_eq_sp = '2'.
+        lv_has_technology = abap_true.
+      ENDIF.
+      IF <ls_pdm>-req_mat_pl = '2' OR <ls_pdm>-req_mat_sp = '2' OR
+         <ls_pdm>-req_mat_vr = '2' OR <ls_pdm>-req_eq_pl = '2' OR
+         <ls_pdm>-req_eq_sp = '2'.
+        lv_has_kd_only = abap_false.
+      ENDIF.
+    ENDLOOP.
+
+    IF lv_has_technology = abap_true.
+      rv_text = 'По заявке разработана технология и созданы объекты.'.
+    ELSE.
+      rv_text = 'По заявке работа выполнена, разработаны КД: '.
+    ENDIF.
+
+    LOOP AT it_pdm_techn ASSIGNING <ls_pdm> WHERE dsenr IS NOT INITIAL. "#EC CI_STDSEQ
+      IF lv_has_technology = abap_true.
+        lv_line = <ls_pdm>-dsenr && ' ' && <ls_pdm>-vertp && ' : ' && cl_abap_char_utilities=>newline .
+        IF <ls_pdm>-req_mat_pl = '2' OR <ls_pdm>-req_mat_sp = '2' OR
+           <ls_pdm>-req_mat_vr = '2' OR <ls_pdm>-req_eq_pl = '2' OR
+           <ls_pdm>-req_eq_sp = '2'.
+          IF <ls_pdm>-matnr IS NOT INITIAL.
+            lv_line = lv_line && `К материалу ` && |{ <ls_pdm>-matnr ALPHA = OUT }| && ' созданы: ' && cl_abap_char_utilities=>newline  .
+          ELSE.
+            lv_line = lv_line && `Созданы объекты: ` && cl_abap_char_utilities=>newline  .
+          ENDIF.
+          IF <ls_pdm>-req_mat_pl = '2'.
+            lv_line = lv_line && `- техкарта ` && <ls_pdm>-mat_plnnr && '/' && <ls_pdm>-mat_plnal && '; ' && cl_abap_char_utilities=>newline .
+          ENDIF.
+          IF <ls_pdm>-req_mat_sp = '2'.
+            lv_line = lv_line && `- альт. спецификация ` && <ls_pdm>-mat_stlal  && '; ' && cl_abap_char_utilities=>newline .
+          ENDIF.
+          IF <ls_pdm>-req_mat_vr = '2'.
+            lv_line = lv_line && `- вариант изготовления ` && <ls_pdm>-mat_verid &&  '; ' && cl_abap_char_utilities=>newline .
+          ENDIF.
+          IF <ls_pdm>-req_eq_pl = '2'.
+            lv_line = lv_line && `- ТК ЕО счетчик № ` && <ls_pdm>-eq_plnal &&  '; ' && cl_abap_char_utilities=>newline .
+          ENDIF.
+          IF <ls_pdm>-req_eq_sp = '2'.
+            lv_line = lv_line && `- дополнена спецификация ЕО на материал ` && |{ <ls_pdm>-matnr ALPHA = OUT }|  &&  '; ' && cl_abap_char_utilities=>newline .
+          ENDIF.
+        ELSE.
+          lv_line = lv_line && 'нет технологии'.
+        ENDIF.
+      ELSE. " только КД
+        IF sy-tabix > 1.
+          rv_text = rv_text && ', '.
+        ENDIF.
+        rv_text = rv_text && <ls_pdm>-dsenr && ' ' && <ls_pdm>-vertp.
+      ENDIF.
+      IF lv_has_technology = abap_true.
+        rv_text = rv_text && cl_abap_char_utilities=>newline && lv_line.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD check_deactivation.
+    DATA:
+      lt_routing_change_ok       TYPE STANDARD TABLE OF string WITH DEFAULT KEY,
+      lt_routing_change_err      TYPE STANDARD TABLE OF string WITH DEFAULT KEY,
+      lt_mat_bom_maintain_ok     TYPE STANDARD TABLE OF string WITH DEFAULT KEY,
+      lt_mat_bom_maintain_err    TYPE STANDARD TABLE OF string WITH DEFAULT KEY,
+      lt_prod_vers_db_update_ok  TYPE STANDARD TABLE OF string WITH DEFAULT KEY,
+      lt_prod_vers_db_update_err TYPE STANDARD TABLE OF string WITH DEFAULT KEY.
+* Выберем все, проверим удалось удалить или нет
+
+*   проверка поочереди
+* - метка удаления в «Общих данных» заголовка ТК на ОЗМ;
+    DATA(lt_plko_db) =
+      mo_dao->get_plko(
+        EXPORTING
+          iv_get_all = abap_true
+          iv_plnty   = CONV #( ms_tvarv-const_4129_pdm_mat_plnty )
+          it_keys    = is_deact_obj-t_plko ).
+    LOOP AT lt_plko_db INTO DATA(ls_plko_db).
+      DATA(lv_routing_change) = |{ ls_plko_db-plnnr } / { ls_plko_db-plnal }|.
+      IF ls_plko_db-delkz = abap_true." Удалено
+        APPEND lv_routing_change TO lt_routing_change_ok.
+      ELSE.   " Еще не удален
+        APPEND lv_routing_change TO lt_routing_change_err.
+      ENDIF.
+    ENDLOOP.
+
+* - установка метки удаления в «Области действия» заголовка спецификации на ОЗМ;
+    DATA(lt_stko_db) =
+      mo_dao->get_stko(
+        EXPORTING
+          iv_get_all = abap_true
+          iv_stlty   = CONV #( ms_tvarv-const_4129_pdm_mat_stlty )
+          it_keys    = is_deact_obj-t_stko ).
+    LOOP AT lt_stko_db INTO DATA(ls_stko_db).
+      DATA(lv_mat_bom_maintain) = |{ ls_stko_db-stlal }|.
+      IF ls_stko_db-loekz = abap_true." Удалено
+        APPEND lv_mat_bom_maintain TO lt_mat_bom_maintain_ok.
+      ELSE.   " Еще не удален
+        APPEND lv_mat_bom_maintain TO lt_mat_bom_maintain_err.
+      ENDIF.
+    ENDLOOP.
+
+* - установка метки удаления в «Области действия» заголовка спецификации на ОЗМ;
+    DATA(lt_mkal_u) = VALUE mkal_tab( ).
+    DATA(lt_mkal_keys) =
+      VALUE ty_srt_mkal(
+        FOR GROUPS ls_mkal_key OF ls_mkal_key_s IN it_prod_versions
+        GROUP BY ( matnr = ls_mkal_key_s-matnr
+                   werks = ls_mkal_key_s-werks
+                   verid = ls_mkal_key_s-verid )
+        ASCENDING WITHOUT MEMBERS
+          ( matnr = ls_mkal_key-matnr
+            werks = ls_mkal_key-werks
+            verid = ls_mkal_key-verid ) ).
+
+    DATA(lt_mkal) = mo_dao->get_mkal(
+       EXPORTING
+         iv_get_all = abap_true
+         it_keys    = lt_mkal_keys ).
+
+    LOOP AT it_prod_versions INTO DATA(ls_prod_versions).
+      DATA(lv_prod_vers_db_update) = |{ ls_prod_versions-verid }|.
+* - заблокировванно для любого использования в варианте изготовления.
+      READ TABLE lt_mkal
+        WITH TABLE KEY
+          matnr = ls_prod_versions-matnr
+          werks = ls_prod_versions-werks
+          verid = ls_prod_versions-verid
+        INTO DATA(ls_mkal).
+      IF sy-subrc <> 0 OR ls_mkal-mksp = '1'." Удалено
+        APPEND lv_prod_vers_db_update TO lt_prod_vers_db_update_ok.
+      ELSE.   " Еще не удален
+        APPEND lv_prod_vers_db_update TO lt_prod_vers_db_update_err.
+      ENDIF.
+    ENDLOOP.
+
+    SORT: lt_routing_change_ok,
+          lt_routing_change_err,
+          lt_mat_bom_maintain_ok,
+          lt_mat_bom_maintain_err,
+          lt_prod_vers_db_update_ok,
+          lt_prod_vers_db_update_err.
+    DELETE ADJACENT DUPLICATES FROM:
+      lt_routing_change_ok,
+      lt_routing_change_err,
+      lt_mat_bom_maintain_ok,
+      lt_mat_bom_maintain_err,
+      lt_prod_vers_db_update_ok,
+      lt_prod_vers_db_update_err.
+
+    IF   lt_mat_bom_maintain_ok IS NOT INITIAL
+      OR lt_routing_change_ok IS NOT INITIAL
+      OR lt_prod_vers_db_update_ok IS NOT INITIAL.
+
+      _set_ok_deactivation(
+        EXPORTING
+          iv_stlal       = concat_lines_of(
+                              table = lt_mat_bom_maintain_ok
+                              sep   = `, ` )
+          iv_plnnr_plnal = concat_lines_of(
+                              table = lt_routing_change_ok
+                              sep   = `, ` )
+          iv_verid       = concat_lines_of(
+                              table = lt_prod_vers_db_update_ok
+                              sep   = `, ` )
+        CHANGING
+          cv_text        = cv_text ).
+    ENDIF.
+
+    IF   lt_mat_bom_maintain_err IS NOT INITIAL
+      OR lt_routing_change_err IS NOT INITIAL
+      OR lt_prod_vers_db_update_err IS NOT INITIAL.
+
+      _set_error_deactivation(
+        EXPORTING
+          iv_stlal       = concat_lines_of(
+                              table = lt_mat_bom_maintain_err
+                              sep   = `, ` )
+          iv_plnnr_plnal = concat_lines_of(
+                              table = lt_routing_change_err
+                              sep   = `, ` )
+          iv_verid       = concat_lines_of(
+                              table = lt_prod_vers_db_update_err
+                              sep   = `, ` )
+        CHANGING
+          cv_text  = cv_text ).
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD check_unfinished.
+    LOOP AT mt_pdm_techn ASSIGNING FIELD-SYMBOL(<ls_pdm>).
+      IF <ls_pdm>-req_mat_pl = '1' OR <ls_pdm>-req_mat_sp = '1' OR <ls_pdm>-req_mat_vr = '1'
+         OR <ls_pdm>-req_eq_pl = '1' OR <ls_pdm>-req_eq_sp = '1'.
+        mo_logger->save_log(  ).
+        RAISE EXCEPTION TYPE zcx_pm_pdm_techn_in.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD conversion_cunit.
+    CALL FUNCTION 'CONVERSION_EXIT_CUNIT_INPUT'
+      EXPORTING
+        input          = iv_input
+      IMPORTING
+        output         = ev_res
+      EXCEPTIONS
+        unit_not_found = 1
+        OTHERS         = 2.
+  ENDMETHOD.
+
+
+  METHOD create_eq_tasklist.
+    DATA: lv_iwerk       TYPE iwerk,
+          lv_plnnr       TYPE plnnr,
+          lv_plnal       TYPE plnal,
+          ls_header      TYPE eam_s_hdr_ins,
+          lt_operation   TYPE tt_eaem_oper,
+          lt_oper        TYPE eam_t_tl_opr,
+          lt_component   TYPE eam_t_component_ins,
+          lt_text        TYPE eam_t_text,
+          lt_text_lines  TYPE eam_t_text_lines,
+          lt_return      TYPE bapiret2_t,
+          lv_equnr       TYPE equnr,
+          lv_index_oper  TYPE i.
+
+    " ======== определение LV_EQUNR из QMNUM или потока ========
+    IF is_pdm_techn-qmnum IS NOT INITIAL.
+      lv_equnr = mo_dao->get_qmih_equnr( is_pdm_techn-qmnum ).
+      IF lv_equnr IS INITIAL.
+
+        MESSAGE e010(zpm_pdm_4129) WITH |{ is_pdm_techn-qmnum }| INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+
+        cs_pdm_techn-req_eq_pl = '4'.
+        RETURN.
+      ENDIF.
+      IF is_pdm_techn-equnr IS NOT INITIAL AND is_pdm_techn-equnr <> lv_equnr.
+
+        MESSAGE w011(zpm_pdm_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+      ENDIF.
+    ELSE.
+      lv_equnr = is_pdm_techn-equnr.
+      IF lv_equnr IS INITIAL.
+        MESSAGE e010(zpm_pdm_4129) WITH |{ is_pdm_techn-qmnum }| INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        cs_pdm_techn-req_eq_pl = '4'.
+        RETURN.
+      ENDIF.
+    ENDIF.
+
+    " 1. Определить завод-планировщик (IWERK) по единице оборудования
+    lv_iwerk = resolve_iwerk_for_eq( lv_equnr ).
+    IF lv_iwerk IS INITIAL.
+      cs_pdm_techn-req_eq_pl = '4'.
+      RETURN.
+    ENDIF.
+
+    " 2. Поиск максимального PLNNR для данного оборудования
+    mo_dao->get_max_eapl_plnnr(
+      EXPORTING
+        iv_plnty = CONV #( ms_tvarv-const_4129_pdm_eq_plnty )
+        iv_equnr = lv_equnr
+      IMPORTING
+        ev_plnnr = lv_plnnr
+    ).
+    IF lv_plnnr is NOT INITIAL .
+      lv_plnal = get_free_group_counter(
+        iv_plnty = CONV #( ms_tvarv-const_4129_pdm_eq_plnty )
+        iv_plnnr = lv_plnnr
+      ).
+      IF lv_plnal IS INITIAL.
+        cs_pdm_techn-req_eq_pl = '4'.
+        MESSAGE e046(zpm_pdm_4129)  INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        RETURN.
+      ENDIF.
+    ELSE.
+      lv_plnal = '01'.
+    ENDIF.
+
+    " 3. Определяем название технологии из записи с максимальным THN_NUM
+    DATA lv_thn_name TYPE char40.
+    DATA(ls_izd) = is_izd.
+    SORT ls_izd-tab_tech BY thn_num DESCENDING.
+    READ TABLE ls_izd-tab_tech INDEX 1 INTO DATA(ls_main_tech).
+    IF sy-subrc = 0.
+      lv_thn_name = ls_main_tech-thn_name.
+    ELSE.
+      lv_thn_name = space.
+    ENDIF.
+
+    " 4. Заполнение заголовка техкарты ЕО
+    ls_header-plnty = ms_tvarv-const_4129_pdm_eq_plnty.
+    ls_header-iwerk = lv_iwerk.
+    ls_header-equnr = lv_equnr.
+    ls_header-verwe = ms_tvarv-const_4129_pdm_eq_verwe.
+    ls_header-statu = ms_tvarv-const_4129_pdm_eq_statu.
+    ls_header-ktext = lv_thn_name.
+
+    DATA(lv_aufnr) = mo_dao->get_aufnr_by_qmnum( is_pdm_techn-qmnum ).
+    IF lv_aufnr IS NOT INITIAL.
+      ls_header-tl_extid = |{ lv_aufnr } { is_pdm_techn-qmnum }|.
+    ELSE.
+      ls_header-tl_extid = 'ТК ЕО создана из PDM'.
+    ENDIF.
+
+    ls_header-plnal = lv_plnal.
+
+    " Рабочее место из формуляра ЕО (GEWRK)
+    mo_dao->get_work_center_from_equi(
+      EXPORTING
+        iv_equnr = lv_equnr
+        iv_iwerk = lv_iwerk
+        iv_objty = CONV #( ms_tvarv-const_4129_pdm_objty )
+      IMPORTING
+        ev_arbpl = ls_header-arbpl
+        ev_ingrp = ls_header-vagrp
+    ).
+
+    " 5. Подготовка операций и компонентов
+    DATA(lv_tech_count) = lines( is_izd-tab_tech ).
+    DATA(lv_multi_tech) = xsdbool( lv_tech_count > 1 ).
+    DATA(lv_oper_seq)   = 1.
+
+    DATA: lv_current_vornr         TYPE vornr,
+          lv_first_op_of_tech      TYPE vornr,
+          lv_first_op_of_last_tech TYPE vornr.
+
+    SORT ls_izd-tab_tech BY thn_num.
+
+    LOOP AT ls_izd-tab_tech INTO DATA(ls_tech).
+      SORT ls_tech-tab_oper BY vornr.                  "#EC CI_SORTLOOP
+      lv_index_oper = 1.
+      LOOP AT ls_tech-tab_oper INTO DATA(ls_oper).       "#EC CI_NESTED
+        APPEND INITIAL LINE TO lt_operation ASSIGNING FIELD-SYMBOL(<ls_operation>).
+
+
+        " Номер операции
+        IF lv_multi_tech = abap_true.
+          lv_current_vornr = |{ CONV string( lv_oper_seq ) WIDTH = 4 ALPHA = IN }|.
+          ADD 1 TO lv_oper_seq.
+        ELSE.
+          lv_current_vornr = |{ ls_oper-vornr WIDTH = 4 ALPHA = IN }|.
+        ENDIF.
+        <ls_operation>-vornr = lv_current_vornr.
+
+        IF lv_index_oper = 1.
+          lv_first_op_of_tech = lv_current_vornr.
+        ENDIF.
+
+
+        <ls_operation>-steus = ms_tvarv-const_4129_pdm_eq_steus.
+        <ls_operation>-plnal = lv_plnal.
+        <ls_operation>-slwid = ms_tvarv-const_4129_pdm_eq_slwid.
+        <ls_operation>-usr00 = ls_tech-thn_id(20).
+        <ls_operation>-usr01 = ls_tech-thn_id+20(20).
+        <ls_operation>-usr02 = ls_tech-thn_ver.
+        <ls_operation>-ltxa1 = ls_oper-ltxa1.
+        <ls_operation>-arbei = ls_oper-vgw01.
+
+        conversion_cunit(
+         EXPORTING
+           iv_input = ls_oper-vge01
+         IMPORTING
+           ev_res =  <ls_operation>-arbeh ).
+
+        " Рабочее место из переданного кэша
+        <ls_operation>-arbpl = VALUE #( it_arbpl_cache[ KEY k1 arbpl_input = ls_oper-arbpl ]-arbpl_found OPTIONAL ).
+        IF <ls_operation>-arbpl IS INITIAL.
+          cs_pdm_techn-req_eq_pl = '4'.
+          MESSAGE e037(zpm_pdm_4129) WITH ls_oper-arbpl INTO mv_dummy.
+          mo_logger->add_syst_msg( is_syst = sy ).
+          RETURN.
+        ENDIF.
+
+        " Длинный текст операции
+        IF ls_oper-tdline IS NOT INITIAL.
+          DATA(lv_start_line) = lines( lt_text_lines ) + 1.
+          APPEND INITIAL LINE TO lt_text_lines ASSIGNING FIELD-SYMBOL(<ls_text>).
+          <ls_text>-tdformat = '/'.
+          <ls_text>-tdline  = ls_oper-ltxa1.
+          DATA(lv_work) = ls_oper-tdline.
+          WHILE strlen( lv_work ) > 0.
+            APPEND INITIAL LINE TO lt_text_lines ASSIGNING FIELD-SYMBOL(<ls_line>).
+            <ls_line>-tdformat = '/'.
+            <ls_line>-tdline  = lv_work(132).
+            lv_work = lv_work+132.
+          ENDWHILE.
+          DATA(lv_end_line) = lines( lt_text_lines ).
+          IF lv_end_line >= lv_start_line.
+            APPEND VALUE #(
+              plnal    = lv_plnal
+              vornr    = lv_current_vornr
+              textstart = lv_start_line
+              textend   = lv_end_line
+            ) TO lt_text.
+          ENDIF.
+        ENDIF.
+
+        " Компоненты из TAB_OPER_MATNR
+        LOOP AT ls_oper-tab_oper_matnr INTO DATA(ls_oper_mat). "#EC CI_NESTED
+          APPEND INITIAL LINE TO lt_component ASSIGNING FIELD-SYMBOL(<ls_comp_op>).
+          <ls_comp_op>-plnal = lv_plnal         .
+          <ls_comp_op>-vornr = lv_current_vornr .
+          <ls_comp_op>-idnrk = |{  ls_oper_mat-idrnk ALPHA = IN  }|.
+          <ls_comp_op>-menge = ls_oper_mat-menge.
+          conversion_cunit(
+            EXPORTING
+              iv_input = ls_oper_mat-meins
+            IMPORTING
+              ev_res =  <ls_comp_op>-meins ).
+        ENDLOOP.
+
+       lv_index_oper = lv_index_oper + 1.
+      ENDLOOP.
+
+      " Компоненты из TAB_TECH_MATNR
+      IF ls_tech-tab_tech_matnr IS NOT INITIAL.
+        LOOP AT ls_tech-tab_tech_matnr INTO DATA(ls_tech_mat). "#EC CI_NESTED
+          APPEND INITIAL LINE TO lt_component ASSIGNING FIELD-SYMBOL(<ls_comp_tech>).
+          <ls_comp_tech>-plnal = lv_plnal.
+          <ls_comp_tech>-vornr = lv_first_op_of_tech.
+          <ls_comp_tech>-idnrk = |{ ls_tech_mat-idrnk ALPHA = IN  }|.
+          <ls_comp_tech>-menge = ls_tech_mat-menge.
+          conversion_cunit(
+              EXPORTING
+                iv_input = ls_tech_mat-meins
+              IMPORTING
+                ev_res =  <ls_comp_tech>-meins ).
+        ENDLOOP.
+      ENDIF.
+
+      lv_first_op_of_last_tech = lv_first_op_of_tech.
+    ENDLOOP.
+
+    " Компоненты из TAB_IZD_MATNR
+    IF is_izd-tab_izd_matnr IS NOT INITIAL AND lv_first_op_of_last_tech IS NOT INITIAL.
+      LOOP AT is_izd-tab_izd_matnr INTO DATA(ls_izd_mat).
+        APPEND INITIAL LINE TO lt_component ASSIGNING FIELD-SYMBOL(<ls_comp_izd>).
+        <ls_comp_izd>-plnal = lv_plnal.
+        <ls_comp_izd>-vornr = lv_first_op_of_last_tech.
+        <ls_comp_izd>-idnrk = |{ ls_izd_mat-idrnk ALPHA = IN  }|.
+        <ls_comp_izd>-menge = ls_izd_mat-menge.
+        conversion_cunit(
+          EXPORTING
+            iv_input = ls_izd_mat-meins
+          IMPORTING
+            ev_res =  <ls_comp_izd>-meins ).
+      ENDLOOP.
+    ENDIF.
+
+    lt_oper  = CORRESPONDING #(  lt_operation ).
+    " Вызов ФМ EAM_TASKLIST_CREATE
+    mo_dao->tasklist_create(
+      EXPORTING
+        is_header = ls_header
+      IMPORTING
+        ev_plnnr  = lv_plnnr
+        ev_plnal  = lv_plnal
+        et_return = lt_return
+      CHANGING
+        ct_oper       = lt_oper
+        ct_component  = lt_component
+        ct_text       = lt_text
+        ct_text_lines = lt_text_lines ).
+
+    DATA(lv_errors_exist) = abap_false.
+
+    LOOP AT lt_return ASSIGNING FIELD-SYMBOL(<ls_return>) WHERE type CA 'EA'. "#EC CI_STDSEQ
+      IF <ls_return>-id EQ 'CM_EAM_TL_API' AND <ls_return>-number EQ '164' . "Сообщение о блокировке
+        cs_pdm_techn-req_eq_pl = '1'.
+
+
+        MESSAGE w031(zpm_pdm_4129) WITH 'ТК у ЕО ' |{ lv_equnr ALPHA = OUT }| INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+
+        RETURN.
+      ELSE .
+        mo_logger->add_bapiret2_msg(
+          EXPORTING
+            is_bapiret2      =  <ls_return>      ).
+
+        IF sy-subrc <> 0.
+*           MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+*             WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+        ENDIF.
+      ENDIF.
+      lv_errors_exist = abap_true.
+    ENDLOOP.
+
+    IF lv_errors_exist EQ abap_true .
+      cs_pdm_techn-req_eq_pl = '4'.
+      MESSAGE e038(zpm_pdm_4129) INTO mv_dummy.
+      mo_logger->add_syst_msg( is_syst = sy ).
+      RETURN.
+    ENDIF.
+
+    CLEAR lt_return.
+    mo_dao->tasklist_post(
+      EXPORTING
+        iv_plnnr  = lv_plnnr
+        is_header = ls_header
+      CHANGING
+        ct_return = lt_return ).
+
+    LOOP AT lt_return ASSIGNING <ls_return> WHERE type CA 'EA'. "#EC CI_STDSEQ
+      lv_errors_exist = abap_true.
+    ENDLOOP.
+
+    IF lv_errors_exist EQ abap_true .
+      cs_pdm_techn-req_eq_pl = '4'.
+      MESSAGE e038(zpm_pdm_4129) INTO mv_dummy.
+      mo_logger->add_syst_msg( is_syst = sy ).
+      RETURN.
+    ENDIF.
+
+    mo_dao->bapi_commit(  ).
+
+    cs_pdm_techn-eq_plnnr  = lv_plnnr.
+    cs_pdm_techn-eq_plnal  = lv_plnal.
+    cs_pdm_techn-req_eq_pl = '2'.
+
+    MESSAGE s039(zpm_pdm_4129) WITH  lv_plnal INTO mv_dummy.
+    mo_logger->add_syst_msg( is_syst = sy ).
+  ENDMETHOD.
+
+
+  METHOD create_mat_bom.
+    DATA: lv_stlal  TYPE stlal,
+          ls_csin   TYPE csin,
+          ls_estkob TYPE stkob,
+          lt_stpob  TYPE tdt_stpob.
+
+    " 1. Определение свободного номера альтернативной спецификации (STLAL)
+    lv_stlal = mo_dao->get_free_stlal( iv_matnr = is_izd-matnr
+                               iv_werks = is_pdm_techn-werks
+                               iv_stlan = CONV #( ms_tvarv-const_4129_pdm_mat_stlan ) ).
+    IF lv_stlal IS INITIAL.
+      cs_pdm_techn-req_mat_sp = '4'.
+          MESSAGE e040(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+      RETURN.
+    ENDIF.
+
+    " 2. Заполнение заголовка спецификации (CSIN)
+    ls_csin-matnr = is_izd-matnr.
+    ls_csin-stlty = ms_tvarv-const_4129_pdm_mat_stlty.
+    ls_csin-werks = is_pdm_techn-werks.
+    ls_csin-stlan = ms_tvarv-const_4129_pdm_mat_stlan.
+    ls_csin-datuv = sy-datum.
+    ls_csin-stlal = lv_stlal.
+
+    " 3. Заполнение текста спецификации (ESTKOB)
+    ls_estkob-stktx  = |{ is_izd-dsenr } { is_izd-vertp }|.
+    ls_estkob-bmeng = 1.
+    " 4. Сбор позиций спецификации из трёх источников
+    LOOP AT is_izd-tab_tech INTO DATA(ls_tech).
+      LOOP AT ls_tech-tab_oper INTO DATA(ls_oper)."#EC CI_NESTED
+        LOOP AT ls_oper-tab_oper_matnr INTO DATA(ls_oper_mat)."#EC CI_NESTED
+          DATA(lv_meins_converted) = VALUE kmpme(  ).
+          conversion_cunit(
+             EXPORTING
+               iv_input = ls_oper_mat-meins
+             IMPORTING
+               ev_res =  lv_meins_converted ).
+          APPEND VALUE #( idnrk = |{ ls_oper_mat-idrnk ALPHA = IN  }|
+                          menge = ls_oper_mat-menge
+                          meins = lv_meins_converted
+                          postp = 'L'
+                          vbkz  = 'I' )
+            TO lt_stpob.
+        ENDLOOP.
+      ENDLOOP.
+    ENDLOOP.
+
+    LOOP AT is_izd-tab_tech INTO ls_tech.
+      LOOP AT ls_tech-tab_tech_matnr INTO DATA(ls_tech_mat). "#EC CI_NESTED
+        conversion_cunit(
+             EXPORTING
+               iv_input = ls_tech_mat-meins
+             IMPORTING
+               ev_res =  lv_meins_converted ).
+        APPEND VALUE #( idnrk = |{ ls_tech_mat-idrnk ALPHA = IN  }|
+                        menge = ls_tech_mat-menge
+                        meins = lv_meins_converted
+                        postp = 'L'
+                        vbkz  = 'I' )
+          TO lt_stpob.
+      ENDLOOP.
+    ENDLOOP.
+
+    LOOP AT is_izd-tab_izd_matnr INTO DATA(ls_izd_mat).
+      conversion_cunit(
+             EXPORTING
+               iv_input = ls_izd_mat-meins
+             IMPORTING
+               ev_res   = lv_meins_converted ).
+      APPEND VALUE #( idnrk = |{ ls_izd_mat-idrnk ALPHA = IN  }|
+                      menge = ls_izd_mat-menge
+                      meins = lv_meins_converted
+                      postp = 'L'
+                      vbkz  = 'I' )
+        TO lt_stpob.
+    ENDLOOP.
+
+    " 5. Если позиций нет — спецификация не требуется
+    IF lt_stpob IS INITIAL.
+      cs_pdm_techn-req_mat_sp = '3'.
+      RETURN.
+    ENDIF.
+
+    " 6. Вызов CSAI_BOM_MAINTAIN
+    DATA(lv_error_locked) = abap_false.
+    TRY.
+        mo_dao->call_csai_bom_maintain( EXPORTING is_csin   = ls_csin
+                                          is_estkob = ls_estkob
+                                IMPORTING es_astkob = DATA(ls_astkob)
+                                          ev_error  = DATA(lv_error)
+                                          ev_locked = lv_error_locked
+                                CHANGING ct_stpob   = lt_stpob ).
+      CATCH cx_root INTO data(lo_root).
+        cs_pdm_techn-req_mat_sp = '4'.
+        MESSAGE e041(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        RETURN.
+    ENDTRY.
+
+    IF lv_error_locked = abap_true.
+      cs_pdm_techn-req_mat_sp = '1'.
+      RETURN.
+    ENDIF.
+
+    IF lv_error = abap_true.
+      cs_pdm_techn-req_mat_sp = '4'.
+      RETURN.
+    ENDIF.
+
+    " 8. Успех — сохраняем номера
+    cs_pdm_techn-mat_stlnr = ls_astkob-stlnr.
+    cs_pdm_techn-mat_stlal = lv_stlal.
+    cs_pdm_techn-req_mat_sp = '2'.
+  ENDMETHOD.
+
+
+  METHOD create_mat_tasklist.
+    DATA: lv_profidnetz      TYPE tca41-profidnetz,
+          lv_max_plnnr       TYPE plnnr,
+          lv_free_plnal      TYPE plnal,
+          lt_operation       TYPE STANDARD TABLE OF bapi1012_opr_c,
+          lt_text_allocation TYPE tt_textallocation,
+          lt_text            TYPE tt_text,
+          lt_return          TYPE bapiret2_t,
+          ls_task            TYPE bapi1012_tsk_c,
+          ls_mat_alloc       TYPE bapi1012_mtk_c.
+
+    " 1. Получение профиля для завода
+    mo_dao->get_profiles_by_werks(
+      EXPORTING
+        iv_plnaw        = CONV #( ms_tvarv-const_4129_pdm_plnaw )
+        it_werks_keys   = VALUE #( ( cs_pdm_techn-werks ) )
+      IMPORTING
+        et_werks_profile = DATA(lt_profiles)
+    ).
+    IF NOT line_exists( lt_profiles[ werks = cs_pdm_techn-werks ] ).
+      cs_pdm_techn-req_mat_pl = '4'.
+
+      MESSAGE e032(ZPM_PDM_4129) WITH cs_pdm_techn-werks INTO mv_dummy.
+      mo_logger->add_syst_msg( is_syst = sy ).
+      RETURN.
+    ENDIF.
+    lv_profidnetz = lt_profiles[ werks = cs_pdm_techn-werks ]-profidnetz.
+
+    " 2. Определение PLNNR и свободного PLNAL
+    mo_dao->get_max_mapl_plnnr(
+      EXPORTING
+        iv_plnty = CONV #( ms_tvarv-const_4129_pdm_mat_plnty )
+        iv_matnr = cs_izd-matnr
+        iv_werks = cs_pdm_techn-werks
+      IMPORTING
+        ev_plnnr = lv_max_plnnr
+    ).
+
+    ls_task-plant = cs_pdm_techn-werks.
+    ls_task-task_list_group = lv_max_plnnr.
+
+    IF lv_max_plnnr IS NOT INITIAL.
+      lv_free_plnal = get_free_group_counter(
+        iv_plnty = CONV #( ms_tvarv-const_4129_pdm_mat_plnty )
+        iv_plnnr = lv_max_plnnr
+      ).
+      IF lv_free_plnal IS INITIAL.
+        cs_pdm_techn-req_mat_pl = '4'.
+
+        MESSAGE e033(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        RETURN.
+      ENDIF.
+      ls_task-group_counter = lv_free_plnal.
+    ELSE.
+      ls_task-group_counter = '01'.
+    ENDIF.
+
+    ls_task-task_list_status = ms_tvarv-const_4129_pdm_mat_statu.
+    ls_task-description = |{ cs_izd-dsenr } { cs_izd-vertp }|.
+
+    ls_mat_alloc-material = cs_izd-matnr.
+    ls_mat_alloc-plant    = cs_pdm_techn-werks.
+
+    " 3. Подготовка операций и текстов
+    DATA(lv_tech_count) = lines( cs_izd-tab_tech ).
+    DATA(lv_multi_tech) = xsdbool( lv_tech_count > 1 ).
+    DATA(lv_oper_seq)   = 1.
+
+    SORT cs_izd-tab_tech BY thn_num.  "#EC CI_SORTLOOP
+
+    LOOP AT cs_izd-tab_tech INTO DATA(ls_tech).
+      SORT ls_tech-tab_oper BY vornr.  "#EC CI_SORTLOOP
+
+      LOOP AT ls_tech-tab_oper INTO DATA(ls_oper).  "#EC CI_NESTED
+        APPEND INITIAL LINE TO lt_operation ASSIGNING FIELD-SYMBOL(<ls_operation>).
+
+        " Номер операции
+        IF lv_multi_tech = abap_true.
+          <ls_operation>-activity = |{ CONV string( lv_oper_seq ) WIDTH = 4 ALPHA = IN }|.
+          ADD 1 TO lv_oper_seq.
+        ELSE.
+          <ls_operation>-activity = |{ ls_oper-vornr WIDTH = 4 ALPHA = IN }|.
+        ENDIF.
+
+        <ls_operation>-description = ls_oper-ltxa1.
+        <ls_operation>-std_value_01 = ls_oper-vgw01.
+        conversion_cunit(
+         EXPORTING
+           iv_input = ls_oper-vge01
+         IMPORTING
+           ev_res =  <ls_operation>-std_unit_01 ).
+        <ls_operation>-control_key  = ms_tvarv-const_4129_pdm_mat_steus.
+        <ls_operation>-userfields_keyword_id = ms_tvarv-const_4129_pdm_mat_slwid.
+        <ls_operation>-userfield_ch20_00 = ls_tech-thn_id(20).
+        <ls_operation>-userfield_ch20_01 = ls_tech-thn_id+20(20).
+        <ls_operation>-userfield_ch10_02 = ls_tech-thn_ver.
+
+        " Рабочее место из кэша
+        <ls_operation>-work_cntr = VALUE #( it_arbpl_cache[ KEY k1 arbpl_input = ls_oper-arbpl ]-arbpl_found OPTIONAL ).
+        IF <ls_operation>-work_cntr IS INITIAL.
+          cs_pdm_techn-req_mat_pl = '4'.
+
+          MESSAGE e034(ZPM_PDM_4129) INTO mv_dummy.
+          mo_logger->add_syst_msg( is_syst = sy ).
+          RETURN.
+        ENDIF.
+
+        IF ls_oper-tdline IS NOT INITIAL.
+          DATA(lv_start_line) = lines( lt_text ) + 1.
+          APPEND INITIAL LINE TO lt_text ASSIGNING FIELD-SYMBOL(<ls_text>).
+          <ls_text>-format_col = '/'.
+          <ls_text>-text_line  = ls_oper-ltxa1.
+          DATA(lv_work) = ls_oper-tdline.
+          WHILE strlen( lv_work ) > 0.
+            APPEND INITIAL LINE TO lt_text ASSIGNING <ls_text>.
+            <ls_text>-format_col = '/'.
+            <ls_text>-text_line  = lv_work(132).
+            lv_work = lv_work+132.
+          ENDWHILE.
+          DATA(lv_end_line) = lines( lt_text ).
+          IF lv_end_line >= lv_start_line.
+            APPEND VALUE #(
+              object_type     = '13'
+              task_list_group = ls_task-task_list_group
+              group_counter   = ls_task-group_counter
+              activity        = <ls_operation>-activity
+              langu           = ms_tvarv-pm_reuse_spras_ru
+              line_from       = lv_start_line
+              line_to         = lv_end_line
+            ) TO lt_text_allocation.
+          ENDIF.
+        ENDIF.
+      ENDLOOP.
+    ENDLOOP.
+
+    mo_dao->call_bapi_routing_create(
+      EXPORTING
+        iv_profidnetz      = lv_profidnetz
+        is_task            = ls_task
+        is_mat_alloc       = ls_mat_alloc
+        it_operation       = lt_operation
+        it_text            = lt_text
+        it_text_allocation = lt_text_allocation
+      IMPORTING
+        et_return          = lt_return
+    ).
+
+    READ TABLE lt_return WITH KEY type = 'S' id = 'BAPI' number = '000' INTO DATA(ls_ok).  "#EC CI_STDSEQ
+    IF sy-subrc = 0.
+      SPLIT ls_ok-message_v2 AT '/' INTO DATA(lv_plnty) cs_pdm_techn-mat_plnnr cs_pdm_techn-mat_plnal.
+
+      MESSAGE s035(ZPM_PDM_4129) WITH cs_pdm_techn-mat_plnnr cs_pdm_techn-mat_plnal INTO mv_dummy.
+      mo_logger->add_syst_msg( is_syst = sy ).
+      mo_dao->bapi_commit(  ).
+      cs_pdm_techn-req_mat_pl = '2'.
+    ELSE.
+      LOOP AT lt_return ASSIGNING FIELD-SYMBOL(<ls_return>) WHERE type CA 'EA'. "#EC CI_STDSEQ
+        IF <ls_return>-id eq 'CPCL' and <ls_return>-number eq 006 .
+          cs_pdm_techn-req_mat_pl = '1'.
+
+          MESSAGE e031(ZPM_PDM_4129) WITH cs_pdm_techn-mat_plnnr |{ cs_izd-matnr ALPHA = out }| INTO mv_dummy.
+          mo_logger->add_syst_msg( is_syst = sy ).
+          RETURN.
+        ELSE.
+          mo_logger->add_bapiret2_msg(
+            EXPORTING
+              is_bapiret2      =  <ls_return> ).
+        ENDIF.
+      ENDLOOP.
+      cs_pdm_techn-req_mat_pl = '4'.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD create_mat_verid.
+    DATA: lv_pl TYPE c LENGTH 1,
+          lv_sp TYPE c LENGTH 1.
+
+    lv_pl = cs_pdm_techn-req_mat_pl.
+    lv_sp = cs_pdm_techn-req_mat_sp.
+
+    " Таблица статусов Варианта изготовления из ФС (п.1.4.5.1.3)
+    IF ( lv_pl = '1' AND lv_sp = '1' ) OR
+       ( lv_pl = '1' AND lv_sp = '2' ) OR
+       ( lv_pl = '2' AND lv_sp = '1' ) OR
+       ( lv_pl = '2' AND lv_sp = '2' ).
+      cs_pdm_techn-req_mat_vr = '1'.
+    ELSEIF ( lv_pl = '3' AND lv_sp = '3' ).
+      cs_pdm_techn-req_mat_vr = '3'.
+    ELSE.
+      cs_pdm_techn-req_mat_vr = '4'.
+    ENDIF.
+
+    IF cs_pdm_techn-req_mat_vr <> '1'.
+      RETURN.
+    ENDIF.
+
+    IF cs_pdm_techn-mat_stlal IS INITIAL OR
+       cs_pdm_techn-mat_plnnr IS INITIAL OR
+       cs_pdm_techn-mat_plnal IS INITIAL.
+       MESSAGE e042(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+      cs_pdm_techn-req_mat_vr = '4'.
+      RETURN.
+    ENDIF.
+
+    DATA(lv_verid) = get_free_verid( iv_matnr = is_izd-matnr
+                                     iv_werks = is_pdm_techn-werks ).
+    IF lv_verid IS INITIAL.
+      cs_pdm_techn-req_mat_vr = '4'.
+        MESSAGE e043(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+      RETURN.
+    ENDIF.
+
+    DATA lt_mkal_i TYPE mkal_tab.
+
+    APPEND INITIAL LINE TO lt_mkal_i ASSIGNING FIELD-SYMBOL(<ls_mkal>).
+    <ls_mkal>-matnr = is_izd-matnr.
+    <ls_mkal>-werks = is_pdm_techn-werks.
+    <ls_mkal>-verid = lv_verid.
+    <ls_mkal>-bdatu = '99991231'.
+    <ls_mkal>-adatu = sy-datum.
+    <ls_mkal>-text1 = |{ is_izd-dsenr } { is_izd-vertp }|.
+    <ls_mkal>-stlal = cs_pdm_techn-mat_stlal.
+    <ls_mkal>-stlan = ms_tvarv-const_4129_pdm_mat_stlan.
+    <ls_mkal>-plnty = ms_tvarv-const_4129_pdm_mat_plnty.
+    <ls_mkal>-plnnr = cs_pdm_techn-mat_plnnr.
+    <ls_mkal>-alnal = cs_pdm_techn-mat_plnal.
+
+    DATA(lv_error)  = abap_false.
+    DATA(lv_locked) = abap_false.
+    DATA lt_bapiret TYPE bapiret2_t.
+
+    TRY.
+        handle_prod_vers_update(
+          EXPORTING
+            it_mkal_i   = lt_mkal_i
+          IMPORTING
+            ev_error    = lv_error
+            ev_locked   = lv_locked
+            et_bapiret  = lt_bapiret
+        ).
+      CATCH cx_root.
+        cs_pdm_techn-req_mat_vr = '4'.
+            MESSAGE e044(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        RETURN.
+    ENDTRY.
+
+*    IF lv_locked = abap_true.
+*      cs_pdm_techn-req_mat_vr = '1'.
+*      RETURN.
+*    ENDIF.
+
+    IF lv_error = abap_true.
+      cs_pdm_techn-req_mat_vr = '4'.
+      RETURN.
+    ENDIF.
+
+    cs_pdm_techn-mat_verid  = lv_verid.
+    cs_pdm_techn-req_mat_vr = '2'.
+  ENDMETHOD.
+
+
+  METHOD deactivation.
+*{ 3000022520 LapshovIA 01.07.2026
+    IF ms_tvarv-ycheck_4129_pdm_deac IS NOT INITIAL.
+      DATA(lt_src_key) =
+        VALUE zif_pm_pdm_technology=>ty_srt_prev_objects(
+          FOR GROUPS ls_pdm_src_key OF ls_pdm_src_key_s IN it_pdm_techn
+          WHERE ( req_mat_pl = '2'                       "#EC CI_STDSEQ
+               OR req_mat_sp = '2' )
+          GROUP BY (
+            guid_flow = ls_pdm_src_key_s-guid_flow
+            werks     = ls_pdm_src_key_s-werks
+            matnr     = ls_pdm_src_key_s-matnr
+            dsenr     = ls_pdm_src_key_s-dsenr
+            vertp     = ls_pdm_src_key_s-vertp )
+          ASCENDING WITHOUT MEMBERS (
+            guid_flow = ls_pdm_src_key-guid_flow
+            werks     = ls_pdm_src_key-werks
+            matnr     = ls_pdm_src_key-matnr
+            dsenr     = ls_pdm_src_key-dsenr
+            vertp     = ls_pdm_src_key-vertp ) ).
+* ТК ОЗМ или Спецификация ОЗМ на основе данных из PDM
+      DATA(lt_prev_pdm_objects) = mo_dao->get_prev_pdm_objects( lt_src_key ).
+* Для каждого объекта необходимо искать вариант изготовления, где деактивируемый объект использовался
+      DATA(lt_prod_versions) =
+        get_prod_versions(
+          EXPORTING
+            it_prev_obj = lt_prev_pdm_objects ).
+
+      DATA(ls_deact_obj) =
+        run_deactivation(
+          EXPORTING
+            it_prev_obj      = lt_prev_pdm_objects
+            it_prod_versions = lt_prod_versions ).
+      check_deactivation(
+        EXPORTING
+          is_deact_obj     = ls_deact_obj
+          it_prod_versions = lt_prod_versions
+        CHANGING
+          cv_text          = cv_text ).
+    ENDIF.
+*} 3000022520 LapshovIA 01.07.2026
+  ENDMETHOD.
+
+
+  METHOD fill_table_from_input.
+    DATA: lv_guid_flow   TYPE guid,
+          lt_guid_range  TYPE RANGE OF guid,
+          lt_new_entries TYPE z_t_pm_pdm_techn,
+          ls_new_entry   TYPE ztpm_pdm_techn.
+
+    lv_guid_flow =  is_input-guid_flow .
+
+    APPEND VALUE #( sign = 'I' option = 'EQ' low = lv_guid_flow ) TO lt_guid_range.
+    LOOP AT is_input-tab_izd ASSIGNING FIELD-SYMBOL(<ls_izd>).
+      APPEND VALUE #(   sign = 'I' option = 'EQ' low = <ls_izd>-guid_dse ) TO lt_guid_range.
+    ENDLOOP.
+
+    DATA(lt_existing_guids) = mo_dao->select_existing_guids( lt_guid_range ).
+    DATA lt_existing  TYPE TABLE OF guid WITH NON-UNIQUE SORTED KEY k1 COMPONENTS table_line.
+    LOOP AT lt_existing_guids INTO DATA(ls_guid).
+      INSERT ls_guid INTO TABLE lt_existing.
+    ENDLOOP.
+
+    READ TABLE lt_existing TRANSPORTING NO FIELDS WITH TABLE KEY k1 COMPONENTS table_line = lv_guid_flow.
+    IF sy-subrc <> 0.
+      CLEAR ls_new_entry.
+      ls_new_entry-guid      = lv_guid_flow.
+      ls_new_entry-qmnum     = |{ is_input-qmnum ALPHA = IN  }|.
+      ls_new_entry-equnr     = |{ is_input-equnr ALPHA = IN  }|.
+      ls_new_entry-guid_flow = lv_guid_flow.
+      ls_new_entry-datum     = sy-datum.
+      APPEND ls_new_entry TO lt_new_entries.
+    ENDIF.
+
+    CLEAR mt_izd_cache.
+
+    LOOP AT is_input-tab_izd INTO DATA(ls_izd).
+      INSERT VALUE #( guid_dse  = ls_izd-guid_dse
+                      matnr     = |{ ls_izd-matnr ALPHA = IN }|
+                      thn       = ls_izd-thn
+                      dsenr     = ls_izd-dsenr
+                      vertp     = ls_izd-vertp
+                      tab_tech  = ls_izd-tab_tech
+                      tab_izd_matnr = ls_izd-tab_izd_matnr )
+        INTO TABLE mt_izd_cache.
+
+      READ TABLE lt_existing TRANSPORTING NO FIELDS
+          WITH TABLE KEY k1 COMPONENTS table_line = ls_izd-guid_dse.
+      IF sy-subrc = 0.
+        CONTINUE.
+      ENDIF.
+
+      CLEAR ls_new_entry.
+      ls_new_entry-guid      = ls_izd-guid_dse .
+      ls_new_entry-qmnum     = |{ is_input-qmnum ALPHA = IN  }|.
+      ls_new_entry-equnr     = |{ is_input-equnr ALPHA = IN  }|.
+      ls_new_entry-werks     = is_input-werks.
+      ls_new_entry-matnr     = |{ ls_izd-matnr   ALPHA = IN }|.
+      ls_new_entry-dsenr     = ls_izd-dsenr.
+      ls_new_entry-vertp     = ls_izd-vertp.
+      ls_new_entry-guid_flow = lv_guid_flow.
+      ls_new_entry-datum     = sy-datum.
+
+      SORT ls_izd-tab_tech BY thn_num DESCENDING. "#EC CI_SORTLOOP
+      READ TABLE ls_izd-tab_tech INDEX 1 INTO DATA(ls_max_tech).
+      IF sy-subrc = 0.
+        ls_new_entry-thn_id  = ls_max_tech-thn_id.
+        ls_new_entry-thn_ver = ls_max_tech-thn_ver.
+      ENDIF.
+
+      DATA(lv_has_operations) = abap_false.
+      LOOP AT ls_izd-tab_tech TRANSPORTING NO FIELDS  "#EC CI_NESTED
+          WHERE tab_oper IS NOT INITIAL. "#EC CI_STDSEQ
+        lv_has_operations = abap_true.
+        EXIT.
+      ENDLOOP.
+
+      CASE ls_izd-thn.
+        WHEN ms_tvarv-const_4129_pdm_izgotov.
+          ls_new_entry-req_mat_pl = COND #( WHEN lv_has_operations = abap_true THEN '1' ELSE '3' ).
+          ls_new_entry-req_mat_sp = '1'.
+          ls_new_entry-req_mat_vr = '1'.
+          ls_new_entry-req_eq_pl  = '3'.
+          IF is_input-qmnum IS NOT INITIAL OR is_input-equnr IS NOT INITIAL.
+            ls_new_entry-req_eq_sp = '1'.
+          ELSE.
+            ls_new_entry-req_eq_sp = '3'.
+          ENDIF.
+        WHEN ms_tvarv-const_4129_pdm_remont.
+          ls_new_entry-req_eq_pl = COND #( WHEN lv_has_operations = abap_true THEN '1' ELSE '3' ).
+          ls_new_entry-req_mat_pl = '3'.
+          ls_new_entry-req_mat_sp = '3'.
+          ls_new_entry-req_mat_vr = '3'.
+          IF is_input-qmnum IS NOT INITIAL OR is_input-equnr IS NOT INITIAL.
+            ls_new_entry-req_eq_sp = '1'.
+          ELSE.
+            ls_new_entry-req_eq_sp = '3'.
+          ENDIF.
+      ENDCASE.
+
+      APPEND ls_new_entry TO lt_new_entries.
+    ENDLOOP.
+
+    IF lt_new_entries IS NOT INITIAL.
+      TRY.
+          mo_dao->insert_pdm_techn_bulk( lt_new_entries ).
+        CATCH cx_root.
+
+          MESSAGE e006(ZPM_PDM_4129) INTO mv_dummy.
+          mo_logger->add_syst_msg( is_syst = sy ).
+      ENDTRY.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD flush_update_buffer.
+    CHECK mt_update_buffer IS NOT INITIAL.
+    mo_dao->sync_update_ztpm_pdm_techn(
+      it_data = mt_update_buffer
+      iv_mode = 'M' ).
+    CLEAR mt_update_buffer.
+  ENDMETHOD.
+
+
+  METHOD get_free_group_counter.
+    DATA(lt_used) = mo_dao->get_used_plnal( iv_plnty = iv_plnty
+                                            iv_plnnr = iv_plnnr ).
+    IF iv_plnty IS NOT INITIAL AND lt_used IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    DO 99 TIMES.
+      rv_plnal = conv numc2( sy-index ) .
+      IF NOT line_exists( lt_used[ KEY k1 table_line = rv_plnal ] ).
+        RETURN.
+      ENDIF.
+    ENDDO.
+
+    DO 26 TIMES.
+      DATA(lv_letter) = cl_abap_conv_in_ce=>uccpi( sy-index + 64 ).
+      DO 9 TIMES.
+        rv_plnal = |{ lv_letter }{ sy-index }|.
+        IF NOT line_exists( lt_used[ KEY k1 table_line = rv_plnal ] ).
+          RETURN.
+        ENDIF.
+      ENDDO.
+    ENDDO.
+
+    CLEAR rv_plnal.
+  ENDMETHOD.
+
+
+  METHOD get_free_verid.
+    DATA(lt_used) = mo_dao->get_used_verid( iv_matnr = iv_matnr iv_werks = iv_werks ).
+
+    DO 9999 TIMES.
+      rv_verid = conv numc4( sy-index ).
+      IF NOT line_exists( lt_used[ KEY k1 table_line = rv_verid ] ).
+        RETURN.
+      ENDIF.
+    ENDDO.
+
+    DO 26 TIMES.
+      DATA(lv_letter) = cl_abap_conv_in_ce=>uccpi( sy-index + 64 ).
+      DO 9 TIMES.
+        rv_verid = |{ lv_letter }{ sy-index WIDTH = 3 PAD = '0' }|.
+        IF NOT line_exists( lt_used[ KEY k1 table_line = rv_verid ] ).
+          RETURN.
+        ENDIF.
+      ENDDO.
+    ENDDO.
+
+    CLEAR rv_verid.
+  ENDMETHOD.
+
+
+  METHOD get_izd_by_guid.
+    READ TABLE mt_izd_cache INTO rs_izd WITH TABLE KEY guid_dse = iv_guid.
+    IF sy-subrc <> 0.
+      CLEAR rs_izd.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD get_prod_versions.
+    CLEAR rt_prod_versions.
+
+    DATA(lt_prod_versions_keys) = VALUE ty_srt_prod_versions( ).
+
+    LOOP AT it_prev_obj INTO DATA(ls_prev_pdm_objects).
+      _prep_prod_versions_keys(
+        EXPORTING
+          is_prev          = ls_prev_pdm_objects
+        CHANGING
+          ct_prod_versions = lt_prod_versions_keys ).
+    ENDLOOP.
+
+    IF lt_prod_versions_keys IS NOT INITIAL.
+
+      DELETE ADJACENT DUPLICATES FROM lt_prod_versions_keys.
+      DATA(lt_prod_versions) = mo_dao->get_prod_versions(
+                                 ir_plnty = VALUE ty_r_plnty( sign   = zcl_tvarvc=>mc_sign_i
+                                                              option = zcl_tvarvc=>mc_opt_eq
+                                                              ( low = ms_tvarv-const_4129_pdm_mat_plnty ) )
+                                 ir_stlan = VALUE ty_r_stlan( sign   = zcl_tvarvc=>mc_sign_i
+                                                              option = zcl_tvarvc=>mc_opt_eq
+                                                              ( low = ms_tvarv-const_4129_pdm_mat_stlan ) )
+                                 it_keys  = lt_prod_versions_keys ).
+
+
+      LOOP AT it_prev_obj INTO DATA(ls_prev_objects).
+        READ TABLE lt_prod_versions
+          WITH KEY
+            matnr = ls_prev_objects-matnr
+            werks = ls_prev_objects-werks
+          TRANSPORTING NO FIELDS.
+        IF sy-subrc = 0.
+          LOOP AT lt_prod_versions INTO DATA(ls_prod_versions_filter) FROM sy-tabix. "#EC CI_NESTED
+            IF  ls_prod_versions_filter-matnr <> ls_prev_objects-matnr OR
+                ls_prod_versions_filter-werks <> ls_prev_objects-werks.
+
+              EXIT.
+            ENDIF.
+
+            IF  ls_prev_objects-req_mat_pl = '2' AND
+                ls_prev_objects-mat_plnnr = ls_prod_versions_filter-plnnr AND
+                ls_prev_objects-mat_plnal = ls_prod_versions_filter-alnal
+                    OR
+                ls_prev_objects-req_mat_sp = '2' AND
+                ls_prev_objects-mat_stlal = ls_prod_versions_filter-stlal.
+
+              INSERT ls_prod_versions_filter INTO TABLE rt_prod_versions.
+            ENDIF.
+
+          ENDLOOP.
+        ENDIF.
+      ENDLOOP.
+
+      DELETE ADJACENT DUPLICATES FROM rt_prod_versions.
+    ENDIF.
+
+  ENDMETHOD.
+
+
+  METHOD handle_prod_vers_update.
+    CLEAR: ev_error, ev_locked.
+
+    mo_dao->call_prod_vers_db_update(
+      EXPORTING
+        it_mkal_i   = it_mkal_i
+      IMPORTING
+        ev_subrc    = DATA(lv_subrc)
+        et_bapiret  = et_bapiret
+    ).
+
+    IF lv_subrc <> 0.
+      ev_error = abap_true.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD normalize_guids.
+
+    cs_input_proxy-guid_flow = to_upper( cs_input_proxy-guid_flow ).
+
+    LOOP AT cs_input_proxy-tab_izd ASSIGNING FIELD-SYMBOL(<ls_tab_izd>).
+      <ls_tab_izd>-guid_dse = to_upper( <ls_tab_izd>-guid_dse ).
+    ENDLOOP.
+
+  ENDMETHOD.
+
+
+  METHOD process_equipments.
+    CHECK mt_pdm_techn IS NOT INITIAL.
+
+    LOOP AT mt_pdm_techn ASSIGNING FIELD-SYMBOL(<ls_pdm>). "#EC CI_SROFC_NESTED
+      IF <ls_pdm>-req_eq_pl <> '1'.
+        CONTINUE.
+      ENDIF.
+
+      DATA(ls_izd) = get_izd_by_guid( <ls_pdm>-guid ).
+      IF ls_izd IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      IF <ls_pdm>-qmnum IS INITIAL.
+        DATA(lv_equnr) = <ls_pdm>-equnr .
+      ELSE.
+        lv_equnr = mo_dao->get_qmih_equnr( <ls_pdm>-qmnum ).
+      ENDIF.
+
+      DATA(lv_iwerk_eq) = resolve_iwerk_for_eq( lv_equnr ).
+      IF lv_iwerk_eq IS INITIAL.
+        <ls_pdm>-req_eq_pl = '4'.
+        add_to_update_buffer( <ls_pdm> ).
+        CONTINUE.
+      ENDIF.
+
+      READ TABLE mt_werks_cache INTO DATA(ls_cache_eq) WITH TABLE KEY werks = lv_iwerk_eq.
+      IF sy-subrc <> 0.
+
+        MESSAGE e021(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        <ls_pdm>-req_eq_pl = '4'.
+        add_to_update_buffer( <ls_pdm> ).
+        CONTINUE.
+      ENDIF.
+
+      create_eq_tasklist( EXPORTING is_pdm_techn   = <ls_pdm>
+                                   it_arbpl_cache = ls_cache_eq-cache
+                                    is_izd         = ls_izd
+                          CHANGING  cs_pdm_techn   = <ls_pdm> ).
+      add_to_update_buffer( <ls_pdm> ).
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD process_eq_bom_specs.
+    DATA:
+      lv_equnr      TYPE equnr,
+      lv_matnr_orig TYPE matnr,
+      lv_iwerk      TYPE iwerk,
+      lv_subrc      TYPE sysubrc,
+      lv_msg        TYPE bapi_msg.
+
+    READ TABLE mt_pdm_techn INTO DATA(ls_first) INDEX 1.
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    DATA(lv_qmnum) = ls_first-qmnum.
+
+    IF lv_qmnum IS NOT INITIAL.
+      lv_equnr = mo_dao->get_qmih_equnr( lv_qmnum ).
+      IF lv_equnr IS INITIAL.
+
+        MESSAGE w010(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        LOOP AT mt_pdm_techn ASSIGNING FIELD-SYMBOL(<ls_err>).
+          IF <ls_err>-req_eq_sp = '1'.
+            <ls_err>-req_eq_sp = '4'.
+            add_to_update_buffer( <ls_err> ).
+          ENDIF.
+        ENDLOOP.
+        RETURN.
+      ENDIF.
+
+      IF ls_first-equnr IS NOT INITIAL AND ls_first-equnr <> lv_equnr.
+
+        MESSAGE w011(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+      ENDIF.
+
+      lv_matnr_orig = mo_dao->get_qmel_zzmtnrod( lv_qmnum ).
+      IF lv_matnr_orig IS INITIAL AND lv_qmnum IS NOT INITIAL.
+
+        MESSAGE w012(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+      ENDIF.
+    ELSE.
+      lv_equnr = ls_first-equnr.
+      IF lv_equnr IS INITIAL.
+            MESSAGE e010(ZPM_PDM_4129) WITH lv_qmnum    INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        LOOP AT mt_pdm_techn ASSIGNING <ls_err>.
+          IF <ls_err>-req_eq_sp = '1'.
+            <ls_err>-req_eq_sp = '4'.
+            add_to_update_buffer( <ls_err> ).
+          ENDIF.
+        ENDLOOP.
+        RETURN.
+      ENDIF.
+
+      MESSAGE w012(ZPM_PDM_4129) INTO mv_dummy.
+      mo_logger->add_syst_msg( is_syst = sy ).
+    ENDIF.
+
+    lv_iwerk = mo_dao->get_iwerk_by_equnr( lv_equnr ).
+    IF lv_iwerk IS INITIAL.
+
+      MESSAGE e010(ZPM_PDM_4129) INTO mv_dummy.
+      mo_logger->add_syst_msg( is_syst = sy ).
+      RETURN.
+    ENDIF.
+
+    DATA: lt_izgotov TYPE RANGE OF guid,
+          lt_remont  TYPE RANGE OF guid.
+
+    LOOP AT mt_izd_cache INTO DATA(ls_izd).
+      CASE ls_izd-thn.
+        WHEN ms_tvarv-const_4129_pdm_izgotov.
+          APPEND VALUE #( sign = 'I' option = 'EQ' low = ls_izd-guid_dse ) TO lt_izgotov.
+        WHEN ms_tvarv-const_4129_pdm_remont.
+          APPEND VALUE #( sign = 'I' option = 'EQ' low = ls_izd-guid_dse ) TO lt_remont.
+      ENDCASE.
+    ENDLOOP.
+
+    " Сценарий 1: Изготовление
+    IF lt_izgotov IS NOT INITIAL.
+      LOOP AT mt_pdm_techn ASSIGNING FIELD-SYMBOL(<ls_pdm>)  WHERE guid IN lt_izgotov. "#EC CI_STDSEQ
+        IF <ls_pdm>-req_eq_sp <> '1'.
+          CONTINUE.
+        ENDIF.
+
+        READ TABLE mt_izd_cache INTO ls_izd WITH KEY guid_dse = <ls_pdm>-guid.
+        IF sy-subrc <> 0.
+          <ls_pdm>-req_eq_sp = '4'.
+          add_to_update_buffer( <ls_pdm> ).
+          CONTINUE.
+        ENDIF.
+
+        mo_dao->call_z_pm_pdm_bom(
+          EXPORTING
+            iv_werks      = lv_iwerk
+            iv_matnr_izgt = ls_izd-matnr
+            iv_equnr      = lv_equnr
+            iv_matnr_orig = lv_matnr_orig
+          IMPORTING
+            ev_subrc      = lv_subrc
+            ev_msg_txt    = lv_msg
+            es_msg        = data(ls_msg)
+        ).
+
+        IF lv_subrc = 0.
+          <ls_pdm>-req_eq_sp = '2'.
+
+          MESSAGE s014(ZPM_PDM_4129) WITH |{ ls_izd-matnr }| INTO mv_dummy.
+          mo_logger->add_syst_msg( is_syst = sy ).
+        ELSE.
+          IF  ls_msg-id = 'ZPM_PDM' and ls_msg-number = 006 .
+            <ls_pdm>-req_eq_sp = '3'.
+
+            MESSAGE w006(ZPM_PDM) WITH ls_msg-message_v1 INTO mv_dummy.
+            mo_logger->add_syst_msg( is_syst = sy ).
+
+          ELSEIF ls_msg-id = '29' and ls_msg-number = 160 .
+            <ls_pdm>-req_eq_sp = '1'.
+
+            MESSAGE w016(ZPM_PDM_4129) WITH lv_msg INTO mv_dummy.
+            mo_logger->add_syst_msg( is_syst = sy ).
+          ELSE.
+            <ls_pdm>-req_eq_sp = '4'.
+
+            MESSAGE e013(ZPM_PDM_4129) WITH lv_msg INTO mv_dummy.
+            mo_logger->add_syst_msg( is_syst = sy ).
+          ENDIF.
+        ENDIF.
+        add_to_update_buffer( <ls_pdm> ).
+      ENDLOOP.
+    ENDIF.
+
+    " Сценарий 2: Ремонт (материал-оригинал)
+    IF lt_remont IS NOT INITIAL AND lv_matnr_orig IS NOT INITIAL.
+      DATA(lv_first_remont_guid) = VALUE #( lt_remont[ 1 ]-low OPTIONAL ).
+      IF lv_first_remont_guid IS NOT INITIAL.
+        READ TABLE mt_izd_cache INTO ls_izd WITH KEY guid_dse = lv_first_remont_guid.
+        IF sy-subrc = 0.
+          READ TABLE mt_pdm_techn ASSIGNING <ls_pdm> WITH TABLE KEY k1 COMPONENTS guid = lv_first_remont_guid.
+          IF sy-subrc = 0 AND <ls_pdm>-req_eq_sp = '1'.
+            mo_dao->call_z_pm_pdm_bom(
+              EXPORTING
+                iv_werks      = lv_iwerk
+                iv_matnr_izgt = lv_matnr_orig
+                iv_equnr      = lv_equnr
+                iv_matnr_orig = space
+              IMPORTING
+                ev_subrc      = lv_subrc
+                ev_msg_txt    = lv_msg
+                es_msg        = ls_msg
+            ).
+
+            IF lv_subrc = 0.
+              <ls_pdm>-req_eq_sp = '2'.
+
+              MESSAGE s014(ZPM_PDM_4129) WITH |{ lv_matnr_orig }| INTO mv_dummy.
+              mo_logger->add_syst_msg( is_syst = sy ).
+            ELSE.
+              IF ls_msg-id = 'ZPM_PDM' and ls_msg-number = 006 .
+                <ls_pdm>-req_eq_sp = '3'.
+                MESSAGE w006(ZPM_PDM) WITH ls_msg-message_v1 INTO mv_dummy.
+                mo_logger->add_syst_msg( is_syst = sy ).
+              ELSEIF  ls_msg-id = '29' and ls_msg-number = 160 .
+                <ls_pdm>-req_eq_sp = '1'.
+
+                MESSAGE w016(ZPM_PDM_4129) WITH lv_msg INTO mv_dummy.
+                mo_logger->add_syst_msg( is_syst = sy ).
+              ELSE.
+                <ls_pdm>-req_eq_sp = '4'.
+
+                MESSAGE e013(ZPM_PDM_4129) WITH lv_msg INTO mv_dummy.
+                mo_logger->add_syst_msg( is_syst = sy ).
+              ENDIF.
+            ENDIF.
+            add_to_update_buffer( <ls_pdm> ).
+          ENDIF.
+        ENDIF.
+      ENDIF.
+
+      LOOP AT mt_pdm_techn ASSIGNING <ls_pdm> WHERE guid IN lt_remont  "#EC CI_STDSEQ
+                                               AND req_eq_sp = '1'.
+        IF <ls_pdm>-guid <> lv_first_remont_guid.
+          <ls_pdm>-req_eq_sp = '3'.
+          add_to_update_buffer( <ls_pdm> ).
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD process_materials.
+    CHECK mt_pdm_techn IS NOT INITIAL.
+
+    LOOP AT mt_pdm_techn ASSIGNING FIELD-SYMBOL(<ls_pdm>).
+      IF <ls_pdm>-req_mat_pl <> '1' AND <ls_pdm>-req_mat_sp <> '1' AND <ls_pdm>-req_mat_vr <> '1'.
+        CONTINUE.
+      ENDIF.
+
+      DATA(ls_izd) = get_izd_by_guid( <ls_pdm>-guid ).
+      IF ls_izd IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      DATA(lv_werks_mat) = <ls_pdm>-werks.
+      READ TABLE mt_werks_cache INTO DATA(ls_cache_mat) WITH TABLE KEY werks = lv_werks_mat.
+      IF sy-subrc <> 0.
+
+        MESSAGE e021(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        <ls_pdm>-req_mat_pl = '4'.
+        CONTINUE.
+      ENDIF.
+
+      IF <ls_pdm>-req_mat_pl = '1'.
+        create_mat_tasklist( EXPORTING is_pdm_techn   = <ls_pdm>
+                                       it_arbpl_cache = ls_cache_mat-cache
+                             CHANGING  cs_pdm_techn   = <ls_pdm>
+                                       cs_izd         = ls_izd ).
+        add_to_update_buffer( <ls_pdm> ).
+      ENDIF.
+
+      IF <ls_pdm>-req_mat_sp = '1'.
+        create_mat_bom( EXPORTING is_pdm_techn = <ls_pdm>
+                                is_izd       = ls_izd
+                        CHANGING  cs_pdm_techn = <ls_pdm> ).
+        add_to_update_buffer( <ls_pdm> ).
+      ENDIF.
+
+      IF <ls_pdm>-req_mat_vr = '1'.
+        create_mat_verid( EXPORTING is_pdm_techn = <ls_pdm>
+                                  is_izd       = ls_izd
+                          CHANGING  cs_pdm_techn = <ls_pdm> ).
+        add_to_update_buffer( <ls_pdm> ).
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD read_tvarv.
+    rs_tvarv-ycheck_4129_pdm                = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-ycheck_4129_pdm                ).
+    rs_tvarv-ycheck_4129_pdm_deac = zcl_tvarvc=>get_const( " 3000022520 LapshovIA 01.07.2026
+      zif_pm_pdm_technology=>mc_tvarv_consts-ycheck_4129_pdm_deac ).
+    rs_tvarv-pdm_reuse_qmart                = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-pdm_reuse_qmart                ).
+    rs_tvarv-pdm_reuse_notif_stsma          = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-pdm_reuse_notif_stsma          ).
+    rs_tvarv-pdm_reuse_stat_vpln            = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-pdm_reuse_stat_vpln            ).
+    rs_tvarv-pdm_reuse_stat_vrab            = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-pdm_reuse_stat_vrab            ).
+    rs_tvarv-pdm_reuse_stat_soza            = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-pdm_reuse_stat_soza            ).
+    rs_tvarv-const_4129_pdm_remont          = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_remont          ).
+    rs_tvarv-const_4129_pdm_izgotov         = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_izgotov         ).
+    rs_tvarv-const_4129_pdm_mat_slwid       = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_mat_slwid       ).
+    rs_tvarv-const_4129_pdm_plnaw           = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_plnaw           ).
+    rs_tvarv-const_4129_pdm_mat_plnty       = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_mat_plnty       ).
+    rs_tvarv-const_4129_pdm_mat_statu       = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_mat_statu       ).
+    rs_tvarv-const_4129_pdm_objty           = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_objty           ).
+    rs_tvarv-const_4129_pdm_arbpl_tip_range = zcl_tvarvc=>get_const_range( zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_arbpl_tip       ).
+    rs_tvarv-const_4129_pdm_mat_steus       = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_mat_steus       ).
+    rs_tvarv-const_4129_pdm_mat_stlty       = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_mat_stlty       ).
+    rs_tvarv-const_4129_pdm_mat_stlan       = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_mat_stlan       ).
+    rs_tvarv-const_4129_pdm_eq_slwid        = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_eq_slwid        ).
+    rs_tvarv-const_4129_pdm_eq_plnty        = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_eq_plnty        ).
+    rs_tvarv-const_4129_pdm_eq_statu        = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_eq_statu        ).
+    rs_tvarv-const_4129_pdm_eq_verwe        = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_eq_verwe        ).
+    rs_tvarv-const_4129_pdm_eq_steus        = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-const_4129_pdm_eq_steus        ).
+    rs_tvarv-pm_reuse_spras_ru              = zcl_tvarvc=>get_const(       zif_pm_pdm_technology=>mc_tvarv_consts-pm_reuse_spras_ru              ).
+  ENDMETHOD.
+
+
+  METHOD resolve_iwerk_for_eq.
+    rv_iwerk = mo_dao->get_iwerk_by_equnr( iv_equnr ).
+    IF rv_iwerk IS INITIAL.
+
+      MESSAGE e020(ZPM_PDM_4129) WITH |{ iv_equnr }| INTO mv_dummy.
+      mo_logger->add_syst_msg( is_syst = sy ).
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD run_deactivation.
+    CLEAR rs_deact_obj.
+* Выберем
+    DATA(ls_add_data) = _get_add_data4deact( it_prev_obj ).
+*   Удаляем поочереди
+* - установка метки удаления в «Общих данных» заголовка ТК на ОЗМ;
+    LOOP AT it_prev_obj INTO DATA(ls_gr_routing_change)
+                        GROUP BY ( mat_plnnr = ls_gr_routing_change-mat_plnnr
+                                   mat_plnal = ls_gr_routing_change-mat_plnal ).
+
+      READ TABLE ls_add_data-t_plko
+        WITH TABLE KEY plnty = ms_tvarv-const_4129_pdm_mat_plnty
+                       plnnr = ls_gr_routing_change-mat_plnnr
+                       plnal = ls_gr_routing_change-mat_plnal
+        INTO DATA(ls_plko).
+      CHECK sy-subrc = 0. " Еще не удален
+      INSERT ls_plko INTO TABLE rs_deact_obj-t_plko.
+      TRY.
+          mo_dao->routing_change(
+            EXPORTING
+              iv_task_list_group = ls_gr_routing_change-mat_plnnr
+              iv_group_counter   = ls_gr_routing_change-mat_plnal ).
+        CATCH zcx_pm_pdm_techn_in.
+          CONTINUE. " Дальше не идем
+      ENDTRY.
+    ENDLOOP.
+
+* - установка метки удаления в «Области действия» заголовка спецификации на ОЗМ;
+    LOOP AT it_prev_obj INTO DATA(ls_gr_mat_bom_maintain)
+                        GROUP BY ( matnr     = ls_gr_mat_bom_maintain-matnr
+                                   werks     = ls_gr_mat_bom_maintain-werks
+                                   mat_stlnr = ls_gr_mat_bom_maintain-mat_stlnr
+                                   mat_stlal = ls_gr_mat_bom_maintain-mat_stlal ).
+
+      READ TABLE ls_add_data-t_stko
+        WITH TABLE KEY stlty = ms_tvarv-const_4129_pdm_mat_stlty
+                       stlnr = ls_gr_mat_bom_maintain-mat_stlnr
+                       stlal = ls_gr_mat_bom_maintain-mat_stlal
+        INTO DATA(ls_stko).
+      CHECK sy-subrc = 0. " Еще не удален
+      INSERT ls_stko INTO TABLE rs_deact_obj-t_stko.
+      TRY.
+          mo_dao->mat_bom_maintain(
+            EXPORTING
+              iv_material    = mo_dao->exit_matn2( ls_gr_mat_bom_maintain-matnr )
+              iv_plant       = ls_gr_mat_bom_maintain-werks
+              iv_bom_usage   = CONV #( ms_tvarv-const_4129_pdm_mat_stlan )
+              iv_alternative = ls_gr_mat_bom_maintain-mat_stlal
+              iv_stktx       = ls_stko-stktx ).
+
+        CATCH zcx_pm_pdm_techn_in.
+          CONTINUE.
+      ENDTRY.
+    ENDLOOP.
+
+* - установка метки удаления в «Области действия» заголовка спецификации на ОЗМ;
+    DATA(lt_mkal_u) = VALUE mkal_tab( ).
+    LOOP AT it_prod_versions INTO DATA(ls_prod_versions).
+* - блокировка для любого использования в варианте изготовления.
+      ls_prod_versions-bdatu = '99991231'.  "действительно до
+      ls_prod_versions-mksp  = '1'.
+      APPEND ls_prod_versions TO lt_mkal_u.
+    ENDLOOP.
+    mo_dao->prod_vers_db_update( it_mkal_u = lt_mkal_u ).
+  ENDMETHOD.
+
+
+  METHOD update_notification.
+    DATA(lv_qmnum) = mo_dao->get_header_qmnum( mv_guid_flow ).
+    IF lv_qmnum IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    READ TABLE mt_pdm_techn INTO DATA(ls_parent)
+      WITH TABLE KEY k1 COMPONENTS guid = mv_guid_flow.
+    IF sy-subrc = 0 AND ( ls_parent-qm_text = '2' OR ls_parent-qm_text = '3' ).
+      RETURN.
+    ENDIF.
+
+    DATA(lv_has_children) = abap_false.
+    LOOP AT mt_pdm_techn TRANSPORTING NO FIELDS WHERE guid <> mv_guid_flow. "#EC CI_STDSEQ
+      lv_has_children = abap_true.
+      EXIT.
+    ENDLOOP.
+    IF lv_has_children = abap_false.
+      IF ls_parent-qm_text <> '2'.
+        mo_dao->update_ztpm_pdm_techn(  iv_qm_text = '3' iv_guid_flow = mv_guid_flow ).
+      ENDIF.
+      RETURN.
+    ENDIF.
+
+    LOOP AT mt_pdm_techn ASSIGNING FIELD-SYMBOL(<ls_pdm>).
+      IF <ls_pdm>-req_mat_pl = '1' OR <ls_pdm>-req_mat_sp = '1' OR <ls_pdm>-req_mat_vr = '1'
+         OR <ls_pdm>-req_eq_pl = '1' OR <ls_pdm>-req_eq_sp = '1'.
+        mo_logger->save_log(  ).
+        RAISE EXCEPTION TYPE zcx_pm_pdm_techn_in.
+      ENDIF.
+    ENDLOOP.
+    DATA(lv_reason) = |! Ошибка записи технологии в SAP ERP, обратитесь в поддержку для анализа.|. " 3000022549 LapshovIA 29.06.2026
+    LOOP AT mt_pdm_techn ASSIGNING <ls_pdm>.
+      IF <ls_pdm>-req_mat_pl = '4' OR <ls_pdm>-req_mat_sp = '4' OR <ls_pdm>-req_mat_vr = '4'
+         OR <ls_pdm>-req_eq_pl = '4' OR <ls_pdm>-req_eq_sp = '4'.
+*{ 3000022549 LapshovIA 29.06.2026
+*       если произошла ошибка создания объектов, отправить ошибку в PDM
+        mo_dao->z_pm_pdm_notification_stat(
+          EXPORTING
+            iv_qmnum = lv_qmnum
+            iv_stat  = CONV #( mo_dao->ms_config-pdm_reuse_stat_vpln )
+            iv_reson = CONV #( lv_reason ) ).
+*} 3000022549 LapshovIA 29.06.2026
+        RETURN.
+      ENDIF.
+    ENDLOOP.
+
+    DATA(lv_text) = build_notification_text( mt_pdm_techn ).
+    deactivation( " 3000022520 LapshovIA 01.07.2026
+      EXPORTING
+        it_pdm_techn = mt_pdm_techn
+      CHANGING
+        cv_text      = lv_text ).
+    TRY.
+        mo_dao->set_notification_vpln( iv_qmnum     = lv_qmnum
+                                       iv_text      = lv_text
+                                       iv_guid_flow = mv_guid_flow ).
+      CATCH zcx_pm_pdm_application_stat.
+    ENDTRY.
+  ENDMETHOD.
+
+
+  METHOD validate_input.
+    rv_ok = abap_true.
+
+    IF is_input_proxy-qmnum IS NOT INITIAL.
+      DATA(lv_qmart) = mo_dao->get_qmart_by_qmnum( is_input_proxy-qmnum ).
+      IF lv_qmart IS INITIAL.
+
+        MESSAGE e003(ZPM_PDM_4129) WITH is_input_proxy-qmnum INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        rv_ok = abap_false.
+      ELSEIF lv_qmart <> ms_tvarv-pdm_reuse_qmart.
+
+        MESSAGE e004(ZPM_PDM_4129) WITH is_input_proxy-qmnum INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        rv_ok = abap_false.
+      ENDIF.
+
+      IF is_input_proxy-stat IS INITIAL.
+
+        MESSAGE e009(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        rv_ok = abap_false.
+      ENDIF.
+    ENDIF.
+
+    IF is_input_proxy-qmnum IS NOT INITIAL AND is_input_proxy-stat IS NOT INITIAL.
+      IF is_input_proxy-stat <> ms_tvarv-pdm_reuse_stat_vpln AND
+         is_input_proxy-stat <> ms_tvarv-pdm_reuse_stat_vrab.
+
+        MESSAGE e005(ZPM_PDM_4129) INTO mv_dummy.
+        mo_logger->add_syst_msg( is_syst = sy ).
+        rv_ok = abap_false.
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD zpmii_z_pm_pdm_creat_techn_in~z_pm_pdm_creat_techn_in.
+    DATA(ls_input_proxy) = input-z_pm_pdm_creat_techn.
+
+    normalize_guids(
+      CHANGING
+        cs_input_proxy = ls_input_proxy ).
+
+
+    ms_tvarv = read_tvarv( ).
+    mv_guid_flow = ls_input_proxy-guid_flow.
+
+    CHECK ms_tvarv-ycheck_4129_pdm = 'X'.
+
+    mo_logger = NEW zcl_logger( i_log_name    = mc_log_object
+                                i_sublog_name = mc_log_sub_in_techn
+                                i_extnumber   = |{ ls_input_proxy-qmnum }| ).
+
+    mo_dao = NEW lcl_dao( is_config = ms_tvarv
+                          io_logger = mo_logger ).
+
+    DATA(lv_valid) = validate_input( is_input_proxy = ls_input_proxy ).
+    IF lv_valid = abap_false.
+      mo_logger->save_log( ).
+      RETURN.
+    ENDIF.
+
+    fill_table_from_input( ls_input_proxy ).
+    mt_pdm_techn = mo_dao->select_all_by_flow_guid( mv_guid_flow ).
+    build_arbpl_caches( ).
+
+    IF ls_input_proxy-stat = ms_tvarv-pdm_reuse_stat_vpln.
+      process_materials( ).
+      process_equipments( ).
+      process_eq_bom_specs( ).
+      flush_update_buffer( ).
+    ELSEIF ls_input_proxy-stat = ms_tvarv-pdm_reuse_stat_vrab.
+
+      MESSAGE w008(zpm_pdm_4129) INTO mv_dummy.
+      mo_logger->add_syst_msg( is_syst = sy ).
+    ENDIF.
+
+    IF ls_input_proxy-stat = ms_tvarv-pdm_reuse_stat_vpln.
+      TRY.
+          update_notification( ).
+        CATCH zcx_pm_pdm_techn_in.
+          mo_logger->save_log(  ).
+          COMMIT WORK AND WAIT.
+          MESSAGE 'Ошибка создания технологии' TYPE 'E'. " 3000022520 LapshovIA 09.07.2026
+          RETURN. " RAISE EXCEPTION TYPE zcx_pm_pdm_techn_in.
+      ENDTRY.
+    ENDIF.
+
+    TRY.
+        check_unfinished( ).
+      CATCH zcx_pm_pdm_techn_in.
+    ENDTRY.
+
+    mo_logger->save_log( ).
+  ENDMETHOD.
+
+
+  METHOD _get_add_data4deact.
+    CLEAR rs_add_data4deact.
+    DATA(lt_plko_keys) = VALUE ty_srt_plko( ).
+    DATA(lt_stko_keys) = VALUE ty_srt_stko( ).
+
+    LOOP AT it_prev_objects INTO DATA(ls_prvrs_prep_key).
+      IF    ls_prvrs_prep_key-mat_stlnr IS NOT INITIAL
+        AND ls_prvrs_prep_key-mat_stlal IS NOT INITIAL.
+
+        INSERT VALUE ty_s_stko(
+            stlnr = ls_prvrs_prep_key-mat_stlnr
+            stlal = ls_prvrs_prep_key-mat_stlal )
+          INTO TABLE lt_stko_keys.
+      ENDIF.
+
+      IF    ls_prvrs_prep_key-mat_plnnr IS NOT INITIAL
+        AND ls_prvrs_prep_key-mat_plnal IS NOT INITIAL.
+
+        INSERT VALUE ty_s_plko(
+            plnnr = ls_prvrs_prep_key-mat_plnnr
+            plnal = ls_prvrs_prep_key-mat_plnal )
+          INTO TABLE lt_plko_keys.
+      ENDIF.
+    ENDLOOP.
+
+    rs_add_data4deact-t_plko =
+      mo_dao->get_plko(
+        EXPORTING
+          iv_get_all = iv_get_all
+          iv_plnty   = CONV #( ms_tvarv-const_4129_pdm_mat_plnty )
+          it_keys    = lt_plko_keys ).
+
+    rs_add_data4deact-t_stko =
+      mo_dao->get_stko(
+        EXPORTING
+          iv_get_all = iv_get_all
+          iv_stlty   = CONV #( ms_tvarv-const_4129_pdm_mat_stlty )
+          it_keys    = lt_stko_keys ).
+
+  ENDMETHOD.
+
+
+  METHOD _prep_prod_versions_keys.
+* Для каждого объекта необходимо искать вариант изготовления, где деактивируемый объект использовался
+    IF is_prev-req_mat_pl = '2'.
+      INSERT
+        VALUE mkal(
+          matnr = is_prev-matnr
+          werks = is_prev-werks
+          plnnr = is_prev-mat_plnnr
+          alnal = is_prev-mat_plnal )
+        INTO TABLE ct_prod_versions.
+    ENDIF.
+
+    IF is_prev-req_mat_sp = '2'.
+      INSERT
+        VALUE mkal(
+          matnr = is_prev-matnr
+          werks = is_prev-werks
+          stlal = is_prev-mat_stlal )
+        INTO TABLE ct_prod_versions.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD _set_error_deactivation.
+*Было невозможным удалить:
+*ТК ОЗМ: MAT_PLNNR /  MAT_PLNAL.
+*Спецификация ОЗМ: MAT_STLAL.
+*Вариант изготовления: VERID
+    cv_text = cv_text &&
+      |Было невозможным удалить:| && cl_abap_char_utilities=>newline &&
+      |ТК ОЗМ: { iv_plnnr_plnal }| && cl_abap_char_utilities=>newline &&
+      |Спецификация ОЗМ: { iv_stlal }| && cl_abap_char_utilities=>newline &&
+      |Вариант изготовления: { iv_verid }| && cl_abap_char_utilities=>newline.
+  ENDMETHOD.
+
+
+  METHOD _set_ok_deactivation.
+*Были удалены объекты:
+*ТК ОЗМ: MAT_PLNNR /  MAT_PLNAL. && cl_abap_char_utilities=>newline
+*Спецификация ОЗМ: MAT_STLAL. && cl_abap_char_utilities=>newline
+*Вариант изготовления: VERID.&& cl_abap_char_utilities=>newline
+
+    cv_text = cv_text &&
+      |Были удалены объекты:| && cl_abap_char_utilities=>newline &&
+      |ТК ОЗМ: { iv_plnnr_plnal }| && cl_abap_char_utilities=>newline &&
+      |Спецификация ОЗМ: { iv_stlal }| && cl_abap_char_utilities=>newline &&
+      |Вариант изготовления: { iv_verid }| && cl_abap_char_utilities=>newline.
+  ENDMETHOD.
+ENDCLASS.

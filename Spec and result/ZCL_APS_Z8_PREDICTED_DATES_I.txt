@@ -1,0 +1,20 @@
+class ZCL_APS_Z8_PREDICTED_DATES_I definition
+  public
+  create public .
+
+public section.
+
+  interfaces ZPMII_APS_Z8_PREDICTED_DATES_I .
+protected section.
+private section.
+ENDCLASS.
+
+
+
+CLASS ZCL_APS_Z8_PREDICTED_DATES_I IMPLEMENTATION.
+
+
+  method ZPMII_APS_Z8_PREDICTED_DATES_I~APS_Z8_PREDICTED_DATES_IN.
+*** **** INSERT IMPLEMENTATION HERE **** ***
+  endmethod.
+ENDCLASS.
