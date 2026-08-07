@@ -5,7 +5,7 @@ CLASS zcl_aps_z8_predicted_dates_i DEFINITION
   PUBLIC SECTION.
     INTERFACES zpmii_aps_z8_predicted_dates_i.
   PROTECTED SECTION.
-  PRIVATE SECTION.
+  PRIVATE SECTION. 
 ENDCLASS.
 
 
@@ -172,31 +172,6 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
     ENDIF.
 
   ENDMETHOD.
-ENDCLASS.*"* use this source file for any type of declarations (class
-*"* definitions, interfaces or type declarations) you need for
-*"* components in the private section
-CLASS lcl_dao DEFINITION.
-  PUBLIC SECTION.
-    METHODS read_bal_log_from_db
-      IMPORTING
-        iv_subobject          TYPE balsubobj
-        iv_object             TYPE balobj_d
-        iv_begda              TYPE dats
-      RETURNING
-        VALUE(rt_messages_db) TYPE bal_t_msg.
-
-    METHODS update_latest_end_date
-      IMPORTING
-        iv_qmnum           TYPE qmnum
-        iv_date            TYPE d
-      RETURNING
-        VALUE(rt_messages) TYPE tab_bdcmsgcoll.
-
-    METHODS call_pdm_notification
-      IMPORTING
-        iv_qmnum TYPE qmnum.
-
-    METHODS do_commit.
 ENDCLASS. *"* use this source file for the definition and implementation of
 *"* local helper classes, interface definitions and type
 *"* declarations
