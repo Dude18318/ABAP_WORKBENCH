@@ -1,0 +1,14 @@
+{
+  "global": {
+    "files": "/Spec and result/*.abap"
+  },
+  "dependencies": [],
+  "syntax": {
+    "version": "v750",
+    "errorNamespace": "^(Z|Y|L)"
+  },
+  "rules": {
+    "check_syntax": true,
+    "parser_error": true
+  }
+}
