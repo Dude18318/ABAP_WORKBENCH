@@ -1,0 +1,341 @@
+--- Chunk 1 (Lines 1-50) ---
+CLASS zcl_aps_z8_predicted_dates_i DEFINITION
+  PUBLIC
+  CREATE PUBLIC.
+
+  PUBLIC SECTION.
+    INTERFACES zpmii_aps_z8_predicted_dates_i.
+  PROTECTED SECTION.
+  PRIVATE SECTION.
+ENDCLASS.
+
+
+
+
+
+
+CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
+
+  METHOD zpmii_aps_z8_predicted_dates_i~aps_z8_predicted_dates_in.
+    " #TODO_SIGNATURE: Проверить сигнатуру входного прокси (Z8Predictions)
+    " # SIGNATURE:
+* aps_z8_predicted_dates_in
+*│
+*└─ importing: input type ZPMAPS_Z8_PREDICTED_DATES1
+*   │
+*   └─ APS_Z8_PREDICTED_DATES type ZPMAPS_Z8_PREDICTED_DATES
+*      │
+*      └─ ZPMAPS_Z8_PREDICTED_DATES
+*         │
+*         └─ Z8PREDICTIONS type ZPMAPS_Z8_PREDICTED_DATES_Z8PR
+*            │
+*            └─ ZPMAPS_Z8_PREDICTED_DATES_Z8PR
+*               │
+*               └─ Z8PREDICTED_DATES type ZPMAPS_Z8_PREDICTED_DATES__TAB
+*                  │
+*                  └─ ZPMAPS_Z8_PREDICTED_DATES__TAB
+*                     (Standard Table of ZPMAPS_Z8_PREDICTED_DATES_Z8P1)
+*                     │
+*                     └─ [0..n] ZPMAPS_Z8_PREDICTED_DATES_Z8P1
+*                        │
+*                        ├─ CONTROLLER : PRXCTRLTAB
+*                        ├─ QMNUM     : ABAP.STRING(0)   " Номер заявки Z8
+*                        └─ LATEST_END_DATE : XSDDATETIME_Z
+    " и класс исключений шины.
+
+    DATA(lt_dates) = input-aps_z8_predicted_dates-z8predictions-z8predicted_dates.
+
+    " 1. Читаем TVARV
+
+
+    check zcl_tvarvc=>active_check( 'YCHECK_4175_APS' ) eq abap_true.
+
+----------------------------------------
+--- Chunk 2 (Lines 51-100) ---
+
+    " 2. Инициализация Логгера
+    DATA(lo_logger) = NEW zcl_logger(
+      i_log_name    = 'ZPM_APS'
+      i_sublog_name = 'IN_Z8_PRED_DAT' ).
+
+    DATA(lo_dao) = NEW lcl_dao( ).
+
+    DATA: lt_successful_qmnum TYPE TABLE OF qmnum.
+    DATA: lv_has_locks        TYPE abap_bool VALUE abap_false.
+
+    " Читаем историю логов за сегодня и вчера для проверки прошлых блокировок
+    DATA(lv_date_from) = CONV dats( sy-datum - 1 ).
+    DATA(mt_bal_log_db_messages) = lo_dao->read_bal_log_from_db(
+                                     iv_subobject = 'IN_Z8_PRED_DAT'
+                                     iv_object    = 'ZPM_APS'
+                                     iv_begda     = lv_date_from ).
+
+
+    DATA: lt_qmnum_list TYPE lcl_dao=>tt_qmnum.
+    LOOP AT lt_dates INTO DATA(ls_qmnum_collect).
+      DATA(lv_qmnum_collect) = CONV qmnum( ls_qmnum_collect-qmnum ).
+      lv_qmnum_collect = |{ lv_qmnum_collect ALPHA = IN }|.
+      APPEND lv_qmnum_collect TO lt_qmnum_list.
+    ENDLOOP.
+    SORT lt_qmnum_list.
+    DELETE ADJACENT DUPLICATES FROM lt_qmnum_list.
+
+    DATA(lt_qmel_dates) = lo_dao->read_qmel_dates( lt_qmnum_list ).
+
+    " Построить хэш-таблицу блокированных QMNUM из логов
+    TYPES: tt_locked_qmnums TYPE HASHED TABLE OF qmnum WITH UNIQUE KEY table_line.
+    DATA: lt_locked_qmnums TYPE tt_locked_qmnums.
+
+    LOOP AT mt_bal_log_db_messages INTO DATA(ls_log_retry)
+      WHERE msgid = 'IM' AND msgno = '416' AND msgty = 'E'.
+      DATA(lv_locked_qmnum) = CONV qmnum( ls_log_retry-msgv1 ).
+      INSERT lv_locked_qmnum INTO TABLE lt_locked_qmnums.
+    ENDLOOP.
+
+    " Проверяем, является ли это повторным запуском, путем проверки, есть ли среди ВХОДЯЩИХ сообщений те, что блокировались.
+    " Если хотя бы одно входящее сообщение было заблокировано ранее, мы считаем это повторным прогоном.
+    DATA(lv_is_retry) = abap_false.
+    LOOP AT lt_dates INTO DATA(ls_check_retry).
+      READ TABLE lt_locked_qmnums WITH TABLE KEY table_line = ls_check_retry-qmnum TRANSPORTING NO FIELDS.
+      IF sy-subrc = 0.
+        lv_is_retry = abap_true.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
+
+----------------------------------------
+--- Chunk 3 (Lines 101-150) ---
+
+    LOOP AT lt_dates INTO DATA(ls_date).
+      DATA(lv_qmnum) = conv qmnum( ls_date-qmnum ).
+
+      " Если это повторный запуск (были блокировки среди текущего пакета в прошлом),
+      " обрабатываем только те заявки, которые были заблокированы.
+      IF lv_is_retry = abap_true.
+        READ TABLE lt_locked_qmnums WITH TABLE KEY table_line = ls_date-qmnum TRANSPORTING NO FIELDS.
+        IF sy-subrc <> 0.
+          CONTINUE.
+        ENDIF.
+      ENDIF.
+
+
+      " Выводим номер в формат
+      lv_qmnum = |{ lv_qmnum ALPHA = IN }|.
+
+      " Проверка текущего значения QMEL
+      READ TABLE lt_qmel_dates WITH TABLE KEY qmnum = lv_qmnum ASSIGNING FIELD-SYMBOL(<ls_qmel_date>).
+      IF sy-subrc = 0 AND <ls_qmel_date>-zzlatestenddate = ls_date-latest_end_date(8).
+        MESSAGE w000(zpm_aps) WITH |{ ls_date-qmnum }| 'Данные идентичны' INTO DATA(lv_dummy1).
+        lo_logger->add_syst_msg( sy ).
+        CONTINUE.
+      ENDIF.
+      DATA: lt_messages TYPE tab_bdcmsgcoll.
+
+      DATA(lv_date) = CONV dats( ls_date-latest_end_date(8) ).
+
+      lt_messages = lo_dao->update_latest_end_date( iv_qmnum = lv_qmnum iv_date = lv_date ).
+      " Проверка результатов
+      DATA(lv_has_error) = abap_false.
+      DATA(lv_is_locked) = abap_false.
+
+      LOOP AT lt_messages INTO DATA(ls_msg) WHERE msgtyp = 'E' OR msgtyp = 'A'.
+        lv_has_error = abap_true.
+        IF ls_msg-msgid = 'IM' AND ls_msg-msgnr = '416'.
+          lv_is_locked = abap_true.
+        ENDIF.
+      ENDLOOP.
+
+      IF lv_has_error = abap_false.
+        " 1.4.3.1. Успех
+        MESSAGE s000(zpm_aps) WITH |{ ls_date-qmnum }. Данные записаны| INTO DATA(lv_dummy2).
+        lo_logger->add_syst_msg( sy ).
+        APPEND lv_qmnum TO lt_successful_qmnum.
+      ELSEIF lv_is_locked = abap_true.
+        " 1.4.3.4 Блокировка
+        lv_has_locks = abap_true.
+
+        " Проверяем, писали ли мы уже лог о блокировке этого сообщения
+
+----------------------------------------
+--- Chunk 4 (Lines 151-200) ---
+        READ TABLE lt_locked_qmnums WITH TABLE KEY table_line = ls_date-qmnum TRANSPORTING NO FIELDS.
+        IF sy-subrc <> 0.
+          MESSAGE e416(im) WITH ls_date-qmnum INTO DATA(lv_dummy3).
+          lo_logger->add_syst_msg( sy ).
+        ENDIF.
+      ELSE.
+        " 1.4.3.3. Другая ошибка
+        LOOP AT lt_messages INTO ls_msg WHERE msgtyp = 'E' OR msgtyp = 'A'.
+          DATA(lv_err_txt) = zcl_bdc=>translate_message_to_text( ls_msg ).
+          MESSAGE e000(zpm_aps) WITH |{ ls_date-qmnum }. { lv_err_txt }| INTO DATA(lv_dummy4).
+          lo_logger->add_syst_msg( sy ).
+        ENDLOOP.
+      ENDIF.
+
+    ENDLOOP.
+
+    " 1.4.4. Инициация потока в PDM.
+    LOOP AT lt_successful_qmnum INTO lv_qmnum.
+      lo_dao->call_pdm_notification( iv_qmnum = lv_qmnum ).
+    ENDLOOP.
+
+    lo_logger->save_log( ).
+    lo_dao->do_commit( ).
+
+    IF lv_has_locks = abap_true.
+*      RAISE EXCEPTION TYPE zcx_proxy_fault.
+    ENDIF.
+
+  ENDMETHOD.
+ENDCLASS. *"* use this source file for the definition and implementation of
+*"* local helper classes, interface definitions and type
+*"* declarations
+CLASS lcl_dao DEFINITION.
+  PUBLIC SECTION.
+    TYPES tt_qmnum TYPE STANDARD TABLE OF qmnum WITH DEFAULT KEY.
+    TYPES: BEGIN OF ty_qmel_date,
+             qmnum           TYPE qmnum,
+             zzlatestenddate TYPE d,
+           END OF ty_qmel_date.
+    TYPES tt_qmel_date TYPE HASHED TABLE OF ty_qmel_date WITH UNIQUE KEY qmnum.
+    TYPES: tt_bal_msg_sorted TYPE SORTED TABLE OF bal_s_msg WITH NON-UNIQUE KEY msgid msgno msgty msgv1.
+
+    METHODS read_bal_log_from_db
+      IMPORTING
+        iv_subobject          TYPE balsubobj
+        iv_object             TYPE balobj_d
+        iv_begda              TYPE dats
+      RETURNING
+        VALUE(rt_messages_db) TYPE tt_bal_msg_sorted.
+
+
+----------------------------------------
+--- Chunk 5 (Lines 201-250) ---
+    METHODS update_latest_end_date
+      IMPORTING
+        iv_qmnum           TYPE qmnum
+        iv_date            TYPE d
+      RETURNING
+        VALUE(rt_messages) TYPE tab_bdcmsgcoll.
+
+    METHODS call_pdm_notification
+      IMPORTING
+        iv_qmnum TYPE qmnum.
+
+    METHODS do_commit.
+
+    METHODS read_qmel_dates
+      IMPORTING
+        it_qmnum TYPE tt_qmnum
+      RETURNING
+        VALUE(rt_qmel_dates) TYPE tt_qmel_date.
+ENDCLASS.
+
+
+CLASS lcl_dao IMPLEMENTATION.
+  METHOD update_latest_end_date.
+    DATA(lo_bdc) = NEW zcl_bdc( ).
+
+    lo_bdc->bdc_dynpro( i_program = 'SAPLIQS0' i_dynpro  = '0100' ).
+    lo_bdc->bdc_field( i_field = 'BDC_OKCODE' i_value = '/00' ).
+    lo_bdc->bdc_field( i_field = 'RIWO00-QMNUM' i_value = iv_qmnum ).
+
+    lo_bdc->bdc_dynpro( i_program = 'SAPLIQS0' i_dynpro  = '7200' ).
+    DATA(lv_date_char) = VALUE char10( ).
+    lv_date_char = |{ iv_date DATE = ENVIRONMENT }|.
+    lo_bdc->bdc_field( i_field = 'ZSPM_4119_104_SCR_FLDS-ZZLATESTENDDATE' i_value = lv_date_char ).
+    lo_bdc->bdc_field( i_field = 'BDC_OKCODE' i_value = '=BUCH' ).
+
+    lo_bdc->call_transaction(
+      EXPORTING
+        i_tcode     = 'IW22'
+        i_dismode   = 'N'
+        i_updmode   = 'S'
+      IMPORTING
+        et_messages = rt_messages ).
+  ENDMETHOD.
+
+  METHOD read_qmel_dates.
+    IF it_qmnum IS NOT INITIAL.
+      SELECT qmnum, zzlatestenddate FROM qmel
+        INTO TABLE @rt_qmel_dates
+        FOR ALL ENTRIES IN @it_qmnum
+        WHERE qmnum = @it_qmnum-table_line.
+
+----------------------------------------
+--- Chunk 6 (Lines 251-300) ---
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD call_pdm_notification.
+    CALL FUNCTION 'Z_PM_PDM_NOTIFICATION' IN BACKGROUND TASK
+      EXPORTING
+        iv_qmnum  = iv_qmnum
+        iv_commit = 'X'.
+  ENDMETHOD.
+
+  METHOD do_commit.
+    COMMIT WORK.
+  ENDMETHOD.
+
+  METHOD read_bal_log_from_db.
+    DATA: lt_log_headers TYPE balhdr_t.
+
+    DATA(lv_date_to) = sy-datum.
+
+    CALL FUNCTION 'BAL_DB_SEARCH'
+      EXPORTING
+        i_s_log_filter = VALUE bal_s_lfil(
+                           object    = VALUE #( ( sign = 'I' option = 'EQ' low = iv_object ) )
+                           subobject = VALUE #( ( sign = 'I' option = 'EQ' low = iv_subobject ) )
+                           aldate    = VALUE #( ( sign = 'I' option = 'BT' low = iv_begda high = lv_date_to ) )
+                         )
+      IMPORTING
+        e_t_log_header = lt_log_headers
+      EXCEPTIONS
+        log_not_found  = 1
+        OTHERS         = 2.
+
+    DATA: lt_log_handles TYPE bal_t_logh,
+          lt_msg_handles TYPE bal_t_msgh.
+
+    IF sy-subrc = 0 AND lt_log_headers IS NOT INITIAL.
+      LOOP AT lt_log_headers INTO DATA(ls_hdr).
+        APPEND ls_hdr-log_handle TO lt_log_handles.
+      ENDLOOP.
+      CALL FUNCTION 'BAL_DB_LOAD'
+        EXPORTING
+          i_t_log_handle    = lt_log_handles
+        IMPORTING
+          e_t_msg_handle    = lt_msg_handles
+        EXCEPTIONS
+          no_logs_specified = 1
+          log_not_found     = 2
+          log_is_empty      = 3
+          OTHERS            = 4.
+
+
+----------------------------------------
+--- Chunk 7 (Lines 301-320) ---
+      IF sy-subrc = 0.
+        LOOP AT lt_msg_handles INTO DATA(ls_msgh).
+          DATA: ls_msg_db TYPE bal_s_msg.
+          CALL FUNCTION 'BAL_LOG_MSG_READ'
+            EXPORTING
+              i_s_msg_handle = ls_msgh
+            IMPORTING
+              e_s_msg        = ls_msg_db
+            EXCEPTIONS
+              log_not_found  = 1
+              msg_not_found  = 2
+              OTHERS         = 3.
+          IF sy-subrc = 0.
+            INSERT ls_msg_db INTO TABLE rt_messages_db.
+          ENDIF.
+        ENDLOOP.
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.
+ENDCLASS.
+
+----------------------------------------
