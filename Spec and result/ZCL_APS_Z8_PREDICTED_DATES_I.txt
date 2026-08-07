@@ -67,16 +67,34 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
                                      iv_begda     = lv_date_from ).
 
 
+    DATA: lt_qmnum_list TYPE lcl_dao=>tt_qmnum.
+    LOOP AT lt_dates INTO DATA(ls_qmnum_collect).
+      DATA(lv_qmnum_collect) = CONV qmnum( ls_qmnum_collect-qmnum ).
+      lv_qmnum_collect = |{ lv_qmnum_collect ALPHA = IN }|.
+      APPEND lv_qmnum_collect TO lt_qmnum_list.
+    ENDLOOP.
+    SORT lt_qmnum_list.
+    DELETE ADJACENT DUPLICATES FROM lt_qmnum_list.
+
+    DATA(lt_qmel_dates) = lo_dao->read_qmel_dates( lt_qmnum_list ).
+
+    " Построить хэш-таблицу блокированных QMNUM из логов
+    TYPES: tt_locked_qmnums TYPE HASHED TABLE OF qmnum WITH UNIQUE KEY table_line.
+    DATA: lt_locked_qmnums TYPE tt_locked_qmnums.
+
+    LOOP AT mt_bal_log_db_messages INTO DATA(ls_log_retry)
+      WHERE msgid = 'IM' AND msgno = '416' AND msgty = 'E'.
+      DATA(lv_locked_qmnum) = CONV qmnum( ls_log_retry-msgv1 ).
+      INSERT lv_locked_qmnum INTO TABLE lt_locked_qmnums.
+    ENDLOOP.
+
     " Проверяем, является ли это повторным запуском, путем проверки, есть ли среди ВХОДЯЩИХ сообщений те, что блокировались.
     " Если хотя бы одно входящее сообщение было заблокировано ранее, мы считаем это повторным прогоном.
     DATA(lv_is_retry) = abap_false.
     LOOP AT lt_dates INTO DATA(ls_check_retry).
-      LOOP AT mt_bal_log_db_messages INTO DATA(ls_log_retry)
-        WHERE msgid = 'IM' AND msgno = '416' AND msgty = 'E' AND msgv1 = ls_check_retry-qmnum.
+      READ TABLE lt_locked_qmnums WITH TABLE KEY table_line = ls_check_retry-qmnum TRANSPORTING NO FIELDS.
+      IF sy-subrc = 0.
         lv_is_retry = abap_true.
-        EXIT.
-      ENDLOOP.
-      IF lv_is_retry = abap_true.
         EXIT.
       ENDIF.
     ENDLOOP.
@@ -87,13 +105,8 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
       " Если это повторный запуск (были блокировки среди текущего пакета в прошлом),
       " обрабатываем только те заявки, которые были заблокированы.
       IF lv_is_retry = abap_true.
-        DATA(lv_was_locked) = abap_false.
-        LOOP AT mt_bal_log_db_messages INTO DATA(ls_db_msg_check)
-          WHERE msgid = 'IM' AND msgno = '416' AND msgty = 'E' AND msgv1 = ls_date-qmnum.
-          lv_was_locked = abap_true.
-          EXIT.
-        ENDLOOP.
-        IF lv_was_locked = abap_false.
+        READ TABLE lt_locked_qmnums WITH TABLE KEY table_line = ls_date-qmnum TRANSPORTING NO FIELDS.
+        IF sy-subrc <> 0.
           CONTINUE.
         ENDIF.
       ENDIF.
@@ -103,10 +116,8 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
       lv_qmnum = |{ lv_qmnum ALPHA = IN }|.
 
       " Проверка текущего значения QMEL
-      SELECT SINGLE zzlatestenddate  FROM qmel INTO @DATA(lv_current_date)
-        WHERE qmnum = @lv_qmnum.
-
-      IF sy-subrc = 0 AND lv_current_date = ls_date-latest_end_date.
+      READ TABLE lt_qmel_dates WITH TABLE KEY qmnum = lv_qmnum ASSIGNING FIELD-SYMBOL(<ls_qmel_date>).
+      IF sy-subrc = 0 AND <ls_qmel_date>-zzlatestenddate = ls_date-latest_end_date(8).
         MESSAGE w000(zpm_aps) WITH |{ ls_date-qmnum }| 'Данные идентичны' INTO DATA(lv_dummy1).
         lo_logger->add_syst_msg( sy ).
         CONTINUE.
@@ -137,14 +148,8 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
         lv_has_locks = abap_true.
 
         " Проверяем, писали ли мы уже лог о блокировке этого сообщения
-        DATA(lv_lock_already_logged) = abap_false.
-        LOOP AT mt_bal_log_db_messages INTO DATA(ls_db_msg)
-          WHERE msgid = 'IM' AND msgno = '416' AND msgty = 'E' AND msgv1 = ls_date-qmnum.
-          lv_lock_already_logged = abap_true.
-          EXIT.
-        ENDLOOP.
-
-        IF lv_lock_already_logged = abap_false.
+        READ TABLE lt_locked_qmnums WITH TABLE KEY table_line = ls_date-qmnum TRANSPORTING NO FIELDS.
+        IF sy-subrc <> 0.
           MESSAGE e416(im) WITH ls_date-qmnum INTO DATA(lv_dummy3).
           lo_logger->add_syst_msg( sy ).
         ENDIF.
@@ -175,6 +180,45 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
 ENDCLASS. *"* use this source file for the definition and implementation of
 *"* local helper classes, interface definitions and type
 *"* declarations
+CLASS lcl_dao DEFINITION.
+  PUBLIC SECTION.
+    TYPES tt_qmnum TYPE STANDARD TABLE OF qmnum WITH DEFAULT KEY.
+    TYPES: BEGIN OF ty_qmel_date,
+             qmnum           TYPE qmnum,
+             zzlatestenddate TYPE d,
+           END OF ty_qmel_date.
+    TYPES tt_qmel_date TYPE HASHED TABLE OF ty_qmel_date WITH UNIQUE KEY qmnum.
+    TYPES: tt_bal_msg_sorted TYPE SORTED TABLE OF bal_s_msg WITH NON-UNIQUE KEY msgid msgno msgty msgv1.
+
+    METHODS read_bal_log_from_db
+      IMPORTING
+        iv_subobject          TYPE balsubobj
+        iv_object             TYPE balobj_d
+        iv_begda              TYPE dats
+      RETURNING
+        VALUE(rt_messages_db) TYPE tt_bal_msg_sorted.
+
+    METHODS update_latest_end_date
+      IMPORTING
+        iv_qmnum           TYPE qmnum
+        iv_date            TYPE d
+      RETURNING
+        VALUE(rt_messages) TYPE tab_bdcmsgcoll.
+
+    METHODS call_pdm_notification
+      IMPORTING
+        iv_qmnum TYPE qmnum.
+
+    METHODS do_commit.
+
+    METHODS read_qmel_dates
+      IMPORTING
+        it_qmnum TYPE tt_qmnum
+      RETURNING
+        VALUE(rt_qmel_dates) TYPE tt_qmel_date.
+ENDCLASS.
+
+
 CLASS lcl_dao IMPLEMENTATION.
   METHOD update_latest_end_date.
     DATA(lo_bdc) = NEW zcl_bdc( ).
@@ -196,6 +240,15 @@ CLASS lcl_dao IMPLEMENTATION.
         i_updmode   = 'S'
       IMPORTING
         et_messages = rt_messages ).
+  ENDMETHOD.
+
+  METHOD read_qmel_dates.
+    IF it_qmnum IS NOT INITIAL.
+      SELECT qmnum, zzlatestenddate FROM qmel
+        INTO TABLE @rt_qmel_dates
+        FOR ALL ENTRIES IN @it_qmnum
+        WHERE qmnum = @it_qmnum-table_line.
+    ENDIF.
   ENDMETHOD.
 
   METHOD call_pdm_notification.
@@ -258,7 +311,7 @@ CLASS lcl_dao IMPLEMENTATION.
               msg_not_found  = 2
               OTHERS         = 3.
           IF sy-subrc = 0.
-            APPEND ls_msg_db TO rt_messages_db.
+            INSERT ls_msg_db INTO TABLE rt_messages_db.
           ENDIF.
         ENDLOOP.
       ENDIF.
