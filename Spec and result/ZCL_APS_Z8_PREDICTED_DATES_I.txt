@@ -42,18 +42,7 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
 *                        └─ LATEST_END_DATE : XSDDATETIME_Z
     " и класс исключений шины.
 
-    " Структура должна содержать Z8Predictions-Z8PredictedDates[]
-    " DATA(lt_dates) = input-z8_predictions-z8_predicted_dates.
-
-    " Для компиляции используем заглушку типа
-    TYPES: BEGIN OF ty_date_s,
-             qmnum           TYPE qmnum,
-             latest_end_date TYPE d,
-           END OF ty_date_s.
-    DATA: lt_dates TYPE TABLE OF ty_date_s.
-
-    " Если входной параметр называется INPUT (как обычно в PI Proxy)
-    " lt_dates = input-z8_predictions-z8_predicted_dates.
+    DATA(lt_dates) = input-aps_z8_predicted_dates-z8_predictions-z8_predicted_dates.
 
     " 1. Читаем TVARV
 
@@ -78,8 +67,37 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
                                      iv_begda     = lv_date_from ).
 
 
+    " Проверяем, является ли это повторным запуском, путем проверки, есть ли среди ВХОДЯЩИХ сообщений те, что блокировались.
+    " Если хотя бы одно входящее сообщение было заблокировано ранее, мы считаем это повторным прогоном.
+    DATA(lv_is_retry) = abap_false.
+    LOOP AT lt_dates INTO DATA(ls_check_retry).
+      LOOP AT mt_bal_log_db_messages INTO DATA(ls_log_retry)
+        WHERE msgid = 'IM' AND msgno = '416' AND msgty = 'E' AND msgv1 = ls_check_retry-qmnum.
+        lv_is_retry = abap_true.
+        EXIT.
+      ENDLOOP.
+      IF lv_is_retry = abap_true.
+        EXIT.
+      ENDIF.
+    ENDLOOP.
+
     LOOP AT lt_dates INTO DATA(ls_date).
       DATA(lv_qmnum) = ls_date-qmnum.
+
+      " Если это повторный запуск (были блокировки среди текущего пакета в прошлом),
+      " обрабатываем только те заявки, которые были заблокированы.
+      IF lv_is_retry = abap_true.
+        DATA(lv_was_locked) = abap_false.
+        LOOP AT mt_bal_log_db_messages INTO DATA(ls_db_msg_check)
+          WHERE msgid = 'IM' AND msgno = '416' AND msgty = 'E' AND msgv1 = ls_date-qmnum.
+          lv_was_locked = abap_true.
+          EXIT.
+        ENDLOOP.
+        IF lv_was_locked = abap_false.
+          CONTINUE.
+        ENDIF.
+      ENDIF.
+
 
       " Выводим номер в формат
       lv_qmnum = |{ lv_qmnum ALPHA = IN }|.
@@ -93,32 +111,8 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
         lo_logger->add_syst_msg( sy ).
         CONTINUE.
       ENDIF.
- "{ блок в дао
-      " Вызываем BDC
-      DATA(lo_bdc) = NEW zcl_bdc( ).
-
-      " SAPLIQS0 0100
-      lo_bdc->bdc_dynpro( i_program = 'SAPLIQS0' i_dynpro  = '0100' ).
-      lo_bdc->bdc_field( i_field = 'BDC_OKCODE' i_value = '/00' ).
-      lo_bdc->bdc_field( i_field = 'RIWO00-QMNUM' i_value = lv_qmnum ).
-
-      " SAPLIQS0 7200
-      lo_bdc->bdc_dynpro( i_program = 'SAPLIQS0' i_dynpro  = '7200' ).
-
-      DATA(lv_date_char) = VALUE char10( ).
-      lv_date_char = |{ ls_date-latest_end_date DATE = ENVIRONMENT }|.
-      lo_bdc->bdc_field( i_field = 'ZSPM_4119_104_SCR_FLDS-ZZLATESTENDDATE' i_value = lv_date_char ).
-      lo_bdc->bdc_field( i_field = 'BDC_OKCODE' i_value = '=BUCH' ).
-
       DATA: lt_messages TYPE tab_bdcmsgcoll.
-      lo_bdc->call_transaction(
-        EXPORTING
-          i_tcode     = 'IW22'
-          i_dismode   = 'N'
-          i_updmode   = 'S'
-        IMPORTING
-          et_messages = lt_messages ).
-"} блок в дао
+      lt_messages = lo_dao->update_latest_end_date( iv_qmnum = lv_qmnum iv_date = ls_date-latest_end_date ).
       " Проверка результатов
       DATA(lv_has_error) = abap_false.
       DATA(lv_is_locked) = abap_false.
@@ -164,19 +158,14 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
 
     " 1.4.4. Инициация потока в PDM.
     LOOP AT lt_successful_qmnum INTO lv_qmnum.
-      " #TODO_SIGNATURE: Проверить наличие Z_PM_PDM_NOTIFICATION
-      CALL FUNCTION 'Z_PM_PDM_NOTIFICATION' IN BACKGROUND TASK   "в дао
-        EXPORTING
-          iv_qmnum  = lv_qmnum
-          iv_commit = 'X'.
+      lo_dao->call_pdm_notification( iv_qmnum = lv_qmnum ).
     ENDLOOP.
 
     lo_logger->save_log( ).
-    COMMIT WORK.    "в дао
+    lo_dao->do_commit( ).
 
     IF lv_has_locks = abap_true.
-      " #TODO_SIGNATURE: Поднять правильное исключение для шины
-      " RAISE EXCEPTION TYPE zcx_proxy_fault.
+      RAISE EXCEPTION TYPE zcx_proxy_fault.
     ENDIF.
 
   ENDMETHOD. 
@@ -192,10 +181,56 @@ CLASS lcl_dao DEFINITION.
         iv_begda              TYPE dats
       RETURNING
         VALUE(rt_messages_db) TYPE bal_t_msg.
+
+    METHODS update_latest_end_date
+      IMPORTING
+        iv_qmnum           TYPE qmnum
+        iv_date            TYPE d
+      RETURNING
+        VALUE(rt_messages) TYPE tab_bdcmsgcoll.
+
+    METHODS call_pdm_notification
+      IMPORTING
+        iv_qmnum TYPE qmnum.
+
+    METHODS do_commit.
 ENDCLASS. *"* use this source file for the definition and implementation of
 *"* local helper classes, interface definitions and type
 *"* declarations
 CLASS lcl_dao IMPLEMENTATION.
+  METHOD update_latest_end_date.
+    DATA(lo_bdc) = NEW zcl_bdc( ).
+
+    lo_bdc->bdc_dynpro( i_program = 'SAPLIQS0' i_dynpro  = '0100' ).
+    lo_bdc->bdc_field( i_field = 'BDC_OKCODE' i_value = '/00' ).
+    lo_bdc->bdc_field( i_field = 'RIWO00-QMNUM' i_value = iv_qmnum ).
+
+    lo_bdc->bdc_dynpro( i_program = 'SAPLIQS0' i_dynpro  = '7200' ).
+    DATA(lv_date_char) = VALUE char10( ).
+    lv_date_char = |{ iv_date DATE = ENVIRONMENT }|.
+    lo_bdc->bdc_field( i_field = 'ZSPM_4119_104_SCR_FLDS-ZZLATESTENDDATE' i_value = lv_date_char ).
+    lo_bdc->bdc_field( i_field = 'BDC_OKCODE' i_value = '=BUCH' ).
+
+    lo_bdc->call_transaction(
+      EXPORTING
+        i_tcode     = 'IW22'
+        i_dismode   = 'N'
+        i_updmode   = 'S'
+      IMPORTING
+        et_messages = rt_messages ).
+  ENDMETHOD.
+
+  METHOD call_pdm_notification.
+    CALL FUNCTION 'Z_PM_PDM_NOTIFICATION' IN BACKGROUND TASK
+      EXPORTING
+        iv_qmnum  = iv_qmnum
+        iv_commit = 'X'.
+  ENDMETHOD.
+
+  METHOD do_commit.
+    COMMIT WORK.
+  ENDMETHOD.
+
   METHOD read_bal_log_from_db.
     DATA: lt_log_headers TYPE balhdr_t.
 
