@@ -1,3 +1,4 @@
+CLASS lcl_test DEFINITION DEFERRED.
 *"* use this source file for the definition and implementation of
 *"* local helper classes, interface definitions and type
 *"* declarations
@@ -143,6 +144,7 @@ ENDCLASS.
 CLASS zcl_aps_z8_predicted_dates_i DEFINITION
   PUBLIC
   CREATE PUBLIC.
+  LOCAL FRIENDS lcl_test.
 
   PUBLIC SECTION.
     INTERFACES zpmii_aps_z8_predicted_dates_i.
@@ -368,5 +370,208 @@ CLASS zcl_aps_z8_predicted_dates_i IMPLEMENTATION.
       iv_has_locks = lv_has_locks
     ).
 
+  ENDMETHOD.
+ENDCLASS.
+
+
+* CLASS lcl_dao_mock DEFINITION
+* CLASS lcl_test DEFINITION
+
+CLASS lcl_dao_mock DEFINITION INHERITING FROM lcl_dao.
+  PUBLIC SECTION.
+    DATA: mt_mock_qmel_dates TYPE lcl_dao=>tt_qmel_date,
+          mt_mock_bal_msgs   TYPE lcl_dao=>tt_bal_msg_sorted,
+          mt_mock_bdc_msgs   TYPE tab_bdcmsgcoll,
+          mv_commit_called   TYPE abap_bool,
+          mt_pdm_calls       TYPE STANDARD TABLE OF qmnum WITH DEFAULT KEY.
+
+    METHODS read_bal_log_from_db REDEFINITION.
+    METHODS update_latest_end_date REDEFINITION.
+    METHODS call_pdm_notification REDEFINITION.
+    METHODS do_commit REDEFINITION.
+    METHODS read_qmel_dates REDEFINITION.
+ENDCLASS.
+
+CLASS lcl_dao_mock IMPLEMENTATION.
+  METHOD read_bal_log_from_db.
+    rt_messages_db = mt_mock_bal_msgs.
+  ENDMETHOD.
+
+  METHOD update_latest_end_date.
+    rt_messages = mt_mock_bdc_msgs.
+  ENDMETHOD.
+
+  METHOD call_pdm_notification.
+    APPEND iv_qmnum TO mt_pdm_calls.
+  ENDMETHOD.
+
+  METHOD do_commit.
+    mv_commit_called = abap_true.
+  ENDMETHOD.
+
+  METHOD read_qmel_dates.
+    rt_qmel_dates = mt_mock_qmel_dates.
+  ENDMETHOD.
+ENDCLASS.
+
+CLASS lcl_test DEFINITION FOR TESTING DURATION SHORT RISK LEVEL HARMLESS.
+  PRIVATE SECTION.
+    DATA: mo_cut      TYPE REF TO zcl_aps_z8_predicted_dates_i,
+          mo_dao_mock TYPE REF TO lcl_dao_mock,
+          mo_logger   TYPE REF TO zcl_logger.
+
+    METHODS setup.
+    METHODS test_identical_date FOR TESTING.
+    METHODS test_successful_update FOR TESTING.
+    METHODS test_locked_update FOR TESTING.
+    METHODS test_retry_mode FOR TESTING.
+    METHODS test_determine_retry FOR TESTING.
+ENDCLASS.
+
+CLASS lcl_test IMPLEMENTATION.
+  METHOD setup.
+    mo_cut = NEW #( ).
+    mo_dao_mock = NEW #( ).
+    mo_logger = NEW zcl_logger( ).
+  ENDMETHOD.
+
+  METHOD test_identical_date.
+    " Arrange
+    DATA: ls_date TYPE zpmaps_z8_predicted_dates_z8p1,
+          lt_locked TYPE zcl_aps_z8_predicted_dates_i=>tt_locked_qmnums,
+          lv_success TYPE qmnum,
+          lv_locked TYPE abap_bool.
+
+    ls_date-qmnum = '10000001'.
+    ls_date-latest_end_date = '20261231'.
+
+    INSERT VALUE #( qmnum = '0010000001' zzlatestenddate = '20261231' ) INTO TABLE mo_dao_mock->mt_mock_qmel_dates.
+
+    " Act
+    mo_cut->process_single_date(
+      EXPORTING
+        is_date = ls_date
+        iv_is_retry = abap_false
+        it_locked_qmnums = lt_locked
+        it_qmel_dates = mo_dao_mock->mt_mock_qmel_dates
+        io_dao = mo_dao_mock
+        io_logger = mo_logger
+      IMPORTING
+        ev_successful_qmnum = lv_success
+        ev_is_locked = lv_locked
+    ).
+
+    " Assert
+    cl_abap_unit_assert=>assert_initial( lv_success ).
+    cl_abap_unit_assert=>assert_initial( lv_locked ).
+  ENDMETHOD.
+
+  METHOD test_successful_update.
+    " Arrange
+    DATA: ls_date TYPE zpmaps_z8_predicted_dates_z8p1,
+          lt_locked TYPE zcl_aps_z8_predicted_dates_i=>tt_locked_qmnums,
+          lv_success TYPE qmnum,
+          lv_locked TYPE abap_bool.
+
+    ls_date-qmnum = '10000002'.
+    ls_date-latest_end_date = '20261231'.
+
+    " Return successful BDC message (S)
+    APPEND VALUE #( msgtyp = 'S' msgid = 'ZPM_APS' msgnr = '000' ) TO mo_dao_mock->mt_mock_bdc_msgs.
+
+    " Act
+    mo_cut->process_single_date(
+      EXPORTING
+        is_date = ls_date
+        iv_is_retry = abap_false
+        it_locked_qmnums = lt_locked
+        it_qmel_dates = mo_dao_mock->mt_mock_qmel_dates
+        io_dao = mo_dao_mock
+        io_logger = mo_logger
+      IMPORTING
+        ev_successful_qmnum = lv_success
+        ev_is_locked = lv_locked
+    ).
+
+    " Assert
+    cl_abap_unit_assert=>assert_equals( act = lv_success exp = '0010000002' ).
+    cl_abap_unit_assert=>assert_initial( lv_locked ).
+  ENDMETHOD.
+
+  METHOD test_locked_update.
+    " Arrange
+    DATA: ls_date TYPE zpmaps_z8_predicted_dates_z8p1,
+          lt_locked TYPE zcl_aps_z8_predicted_dates_i=>tt_locked_qmnums,
+          lv_success TYPE qmnum,
+          lv_locked TYPE abap_bool.
+
+    ls_date-qmnum = '10000003'.
+    ls_date-latest_end_date = '20261231'.
+
+    " Return locked BDC message (IM 416 E)
+    APPEND VALUE #( msgtyp = 'E' msgid = 'IM' msgnr = '416' ) TO mo_dao_mock->mt_mock_bdc_msgs.
+
+    " Act
+    mo_cut->process_single_date(
+      EXPORTING
+        is_date = ls_date
+        iv_is_retry = abap_false
+        it_locked_qmnums = lt_locked
+        it_qmel_dates = mo_dao_mock->mt_mock_qmel_dates
+        io_dao = mo_dao_mock
+        io_logger = mo_logger
+      IMPORTING
+        ev_successful_qmnum = lv_success
+        ev_is_locked = lv_locked
+    ).
+
+    " Assert
+    cl_abap_unit_assert=>assert_initial( lv_success ).
+    cl_abap_unit_assert=>assert_equals( act = lv_locked exp = abap_true ).
+  ENDMETHOD.
+
+  METHOD test_retry_mode.
+    " Arrange
+    DATA: ls_date TYPE zpmaps_z8_predicted_dates_z8p1,
+          lt_locked TYPE zcl_aps_z8_predicted_dates_i=>tt_locked_qmnums,
+          lv_success TYPE qmnum,
+          lv_locked TYPE abap_bool.
+
+    ls_date-qmnum = '10000004'.
+    " Note: 10000004 is NOT in lt_locked
+
+    " Act
+    mo_cut->process_single_date(
+      EXPORTING
+        is_date = ls_date
+        iv_is_retry = abap_true " Retry mode is active!
+        it_locked_qmnums = lt_locked
+        it_qmel_dates = mo_dao_mock->mt_mock_qmel_dates
+        io_dao = mo_dao_mock
+        io_logger = mo_logger
+      IMPORTING
+        ev_successful_qmnum = lv_success
+        ev_is_locked = lv_locked
+    ).
+
+    " Assert: since it's a retry and this qmnum was not locked, it should be skipped
+    cl_abap_unit_assert=>assert_initial( lv_success ).
+    cl_abap_unit_assert=>assert_initial( lv_locked ).
+  ENDMETHOD.
+
+  METHOD test_determine_retry.
+    " Arrange
+    DATA: lt_dates TYPE zpmaps_z8_predicted_dates__tab,
+          lt_locked TYPE zcl_aps_z8_predicted_dates_i=>tt_locked_qmnums,
+          lv_is_retry TYPE abap_bool.
+
+    APPEND VALUE #( qmnum = '10000005' ) TO lt_dates.
+    INSERT '10000005' INTO TABLE lt_locked.
+
+    " Act
+    lv_is_retry = mo_cut->determine_retry_mode( it_dates = lt_dates it_locked_qmnums = lt_locked ).
+
+    " Assert
+    cl_abap_unit_assert=>assert_equals( act = lv_is_retry exp = abap_true ).
   ENDMETHOD.
 ENDCLASS.
